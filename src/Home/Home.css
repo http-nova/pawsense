@@ -1,0 +1,29 @@
+.home-section {
+    display: flex;
+    height: 600px;
+    justify-content: space-evenly;
+    background-color: #A8E6CF;
+    padding: 0px 20px;
+}
+#home {
+    padding-top: 80px; /* same as navbar height */
+}
+
+
+.home-image{
+    width: auto;
+    height: 450px;
+    align-self: flex-end;
+}
+
+.home-content {
+    display: flex;
+    flex-direction: column;
+    font-size: 64px;
+    font-weight: bold;
+    justify-content: center;
+}
+.home-content p {
+    text-align: center;
+    letter-spacing: 15px;
+}
