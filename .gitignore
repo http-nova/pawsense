@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# cache folders
+.cache/
+node_modules/.cache/
+
+# env files
+.env
+.env.local
+.env.production
+
+# build
+dist/
+build/

@@ -1,93 +1,71 @@
 import { useEffect, useState } from "react";
-import "../Toys/Toys.css";
+import { db, auth } from "../firebase";
+import {
+  collection,
+  getDocs,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc
+} from "firebase/firestore";
 
 function Toys() {
-    const [products, setProducts] = useState([]);
-    const [cart, setCart] = useState([]);
+  const [products, setProducts] = useState([]);
 
-    useEffect(() => {
-        const storedProducts = JSON.parse(localStorage.getItem("products")) || [];
-        const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
-        setProducts(storedProducts);
-        setCart(storedCart);
-    }, []);
+  const fetchProducts = async () => {
+    const snapshot = await getDocs(collection(db, "products"));
+    setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  };
 
-    const isLoggedIn = () => {
-        return localStorage.getItem("user") !== null;
-    };
+  const addToCart = async (product) => {
+    const user = auth.currentUser;
+    if (!user) {
+      alert("Please login first");
+      return;
+    }
 
-    const addToCart = (product) => {
-        if (!isLoggedIn()) {
-            alert("Please login first to add items to cart.");
-            return;
-        }
+    const cartRef = doc(db, "cart", user.uid);
+    const cartSnap = await getDoc(cartRef);
 
-        let updatedCart = [...cart];
-        const index = updatedCart.findIndex(item => item.id === product.id);
+    if (cartSnap.exists()) {
+      const items = cartSnap.data().items || [];
+      const index = items.findIndex(i => i.id === product.id);
 
-        if (index !== -1) {
-            updatedCart[index].quantity += 1;
-        } else {
-            updatedCart.push({ ...product, quantity: 1 });
-        }
+      if (index !== -1) {
+        items[index].quantity += 1;
+      } else {
+        items.push({ ...product, quantity: 1 });
+      }
 
-        setCart(updatedCart);
-        localStorage.setItem("cart", JSON.stringify(updatedCart));
-    };
+      await updateDoc(cartRef, { items });
+    } else {
+      await setDoc(cartRef, {
+        items: [{ ...product, quantity: 1 }]
+      });
+    }
+  };
 
-    // ✅ SAFE best seller logic
-    const bestSellers =
-        cart.length > 0
-            ? [...cart]
-                .sort((a, b) => b.quantity - a.quantity)
-                .slice(0, 3)
-            : products.slice(0, 3);
+  return (
+    <section className="toys-section">
+      <h1>Pet Toys</h1>
 
-    return (
-        <section className="toys-section" id="toys">
-            <h1>Pet Toys</h1>
-
-            <div className="Toys-card">
-                {products.map(p => (
-                    <Card
-                        key={p.id}
-                        product={p}
-                        onAdd={() => addToCart(p)}
-                    />
-                ))}
-            </div>
-
-            <h1>Best Sellers</h1>
-
-            <div className="Toys-card">
-                {bestSellers.map(p => (
-                    <Card
-                        key={p.id}
-                        product={p}
-                        onAdd={() => addToCart(p)}
-                    />
-                ))}
-            </div>
-        </section>
-    );
-}
-
-function Card({ product, onAdd }) {
-    return (
-        <div className="Toys-box">
-            <div className="toy-img">
-                <img src={product.image} alt={product.name} />
-            </div>
-
-            <div className="toy-content">
-                <h3>{product.name}</h3>
-                <p>{product.description}</p>
-                <div className="price">${product.price}</div>
-                <button onClick={onAdd}>Add to Cart</button>
-            </div>
-        </div>
-    );
+      <div className="Toys-card">
+        {products.map(p => (
+          <div className="Toys-box" key={p.id}>
+            <img src={p.image} />
+            <h3>{p.name}</h3>
+            <p>{p.description}</p>
+            <div>${p.price}</div>
+            <button onClick={() => addToCart(p)}>Add to Cart</button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 export default Toys;

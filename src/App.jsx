@@ -8,10 +8,9 @@ import Admin from "./Admin/Admin.jsx";
 import AboutUs from "./AboutUs/AboutUs.jsx";
 import ContactUs from "./ContactUs/ContactUs.jsx";
 
-
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/pawsense">
       <Nav />
 
       <Routes>
