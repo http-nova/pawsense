@@ -41,7 +41,7 @@ function Admin() {
     return unsub;
   }, []);
 
-  /* ================= LOAD PRODUCTS (SAFE) ================= */
+  /* ================= LOAD PRODUCTS ================= */
 
   useEffect(() => {
     if (!authLoading && user?.email === ADMIN_EMAIL) {
@@ -51,7 +51,7 @@ function Admin() {
 
   const loadProducts = async () => {
     const snap = await getDocs(collection(db, "products"));
-    setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   };
 
   /* ================= FORM ================= */
@@ -62,24 +62,48 @@ function Admin() {
   const handleImageUpload = (e) =>
     setForm({ ...form, imageFile: e.target.files[0] });
 
-  const uploadImage = async (file) => {
-    const imageRef = ref(storage, `products/${Date.now()}-${file.name}`);
-    await uploadBytes(imageRef, file);
-    return await getDownloadURL(imageRef);
-  };
+  /* ================= SAFE IMAGE UPLOAD ================= */
+
+  const uploadImageSafe = (file) =>
+    new Promise((resolve, reject) => {
+      onAuthStateChanged(auth, async (u) => {
+        if (!u) {
+          reject(new Error("Not authenticated"));
+          return;
+        }
+
+        try {
+          const imageRef = ref(
+            storage,
+            `products/${Date.now()}-${file.name}`
+          );
+
+          await uploadBytes(imageRef, file);
+          const url = await getDownloadURL(imageRef);
+          resolve(url);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+
+  /* ================= SAVE PRODUCT ================= */
 
   const saveProduct = async () => {
+    setError("");
+
     if (!form.name || !form.price || !form.description) {
-      setError("Fill all fields");
+      setError("Fill all fields.");
       return;
     }
 
     try {
       setLoading(true);
+
       let imageUrl = form.image;
 
       if (form.imageFile) {
-        imageUrl = await uploadImage(form.imageFile);
+        imageUrl = await uploadImageSafe(form.imageFile);
       }
 
       if (form.id) {
@@ -109,12 +133,15 @@ function Admin() {
       });
 
       loadProducts();
-    } catch (e) {
-      setError("Failed to save product");
+    } catch (err) {
+      console.error("SAVE PRODUCT ERROR:", err);
+      setError(err.message || "Failed to save product.");
     } finally {
       setLoading(false);
     }
   };
+
+  /* ================= DELETE ================= */
 
   const deleteProduct = async (id) => {
     await deleteDoc(doc(db, "products", id));
@@ -134,25 +161,44 @@ function Admin() {
   /* ================= UI ================= */
 
   return (
-    <div style={{ padding: 40 }}>
+    <div style={{ padding: 40, maxWidth: 800 }}>
       <h1>Admin Panel</h1>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
-      <input name="price" placeholder="Price" value={form.price} onChange={handleChange} />
-      <textarea name="description" value={form.description} onChange={handleChange} />
-      <input type="file" onChange={handleImageUpload} />
+      <input
+        name="name"
+        placeholder="Product name"
+        value={form.name}
+        onChange={handleChange}
+      />
+
+      <input
+        name="price"
+        placeholder="Price"
+        value={form.price}
+        onChange={handleChange}
+      />
+
+      <textarea
+        name="description"
+        placeholder="Description"
+        value={form.description}
+        onChange={handleChange}
+      />
+
+      <input type="file" accept="image/*" onChange={handleImageUpload} />
+
       <button onClick={saveProduct} disabled={loading}>
         {loading ? "Saving..." : "Save Product"}
       </button>
 
       <hr />
 
-      {products.map(p => (
-        <div key={p.id}>
-          <img src={p.image} width="60" alt="" />
-          <b>{p.name}</b> — ₹{p.price}
+      {products.map((p) => (
+        <div key={p.id} style={{ marginBottom: 10 }}>
+          <img src={p.image} width="60" alt={p.name} />
+          <b> {p.name}</b> — ₹{p.price}
           <button onClick={() => deleteProduct(p.id)}>Delete</button>
         </div>
       ))}
