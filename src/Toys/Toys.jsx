@@ -8,6 +8,8 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
+import "./Toys.css";
+
 
 function Toys() {
   const [products, setProducts] = useState([]);
