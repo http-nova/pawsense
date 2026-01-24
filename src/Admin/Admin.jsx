@@ -202,6 +202,10 @@ function Admin() {
           <button onClick={() => deleteProduct(p.id)}>Delete</button>
         </div>
       ))}
+      <p style={{ color: "blue", fontWeight: "bold" }}>
+  Logged in as: {user?.email || "Not logged in"}
+</p>
+
     </div>
   );
 }
