@@ -19,6 +19,7 @@ import { auth } from "../firebase";
 
 const ADMIN_EMAIL = "pawsensemain@gmail.com";
 const NAV_HEIGHT = 90;
+const WHATSAPP_NUMBER = "9172200424";
 
 /* ================= NAV ================= */
 
@@ -47,7 +48,6 @@ function Nav() {
 
   return (
     <>
-      {/* ================= NAVBAR ================= */}
       <nav className="navbar">
         <div className="navbar-logo">
           <img src={imglogo} alt="PawSense Logo" />
@@ -75,7 +75,6 @@ function Nav() {
           <div className="navbar-actions">
             {user ? (
               <>
-                {/* USER NAME ONLY */}
                 <span
                   className="user-name"
                   onClick={() => setShowProfile(true)}
@@ -91,7 +90,7 @@ function Nav() {
                 )}
 
                 {user.email === ADMIN_EMAIL && (
-                  <a href="admin">Admin</a>
+                  <a href="#/admin">Admin</a>
                 )}
 
                 <button onClick={() => signOut(auth)}>Logout</button>
@@ -106,7 +105,6 @@ function Nav() {
         </div>
       </nav>
 
-      {/* ================= MODALS ================= */}
       {showLogin && <LoginModal close={() => setShowLogin(false)} />}
       {showSignup && <SignupModal close={() => setShowSignup(false)} />}
       {showProfile && <ProfileModal close={() => setShowProfile(false)} />}
@@ -117,6 +115,81 @@ function Nav() {
 
 export default Nav;
 
+/* ================= WHATSAPP CHECKOUT ================= */
+
+const checkoutOnWhatsApp = (cart) => {
+  if (!cart.length) return;
+
+  let total = 0;
+  const items = cart.map((item, i) => {
+    const t = item.price * item.quantity;
+    total += t;
+    return `${i + 1}. ${item.name} × ${item.quantity} = ₹${t}`;
+  });
+
+  const msg = `
+🐾 PawSense Order
+
+${items.join("\n")}
+
+--------------------
+Total: ₹${total}
+--------------------
+
+Please confirm availability.
+`;
+
+  window.open(
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
+};
+
+/* ================= CART ================= */
+
+function CartModal({ close }) {
+  const [cart, setCart] = useState(
+    JSON.parse(localStorage.getItem("cart")) || []
+  );
+
+  const removeItem = (id) => {
+    const updated = cart.filter((i) => i.id !== id);
+    setCart(updated);
+    localStorage.setItem("cart", JSON.stringify(updated));
+  };
+
+  return (
+    <Modal title="Your Cart" close={close}>
+      {cart.length === 0 ? (
+        <p>Your cart is empty.</p>
+      ) : (
+        <>
+          {cart.map((item) => (
+            <div className="cart-item" key={item.id}>
+              <span>
+                {item.name} × {item.quantity}
+              </span>
+              <button onClick={() => removeItem(item.id)}>Remove</button>
+            </div>
+          ))}
+
+          <button
+            style={{
+              marginTop: 14,
+              background: "#25D366",
+              color: "#fff",
+              fontWeight: "bold",
+            }}
+            onClick={() => checkoutOnWhatsApp(cart)}
+          >
+            Checkout on WhatsApp
+          </button>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 /* ================= LOGIN ================= */
 
 function LoginModal({ close }) {
@@ -124,77 +197,34 @@ function LoginModal({ close }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const login = async () => {
     setError("");
-    setInfo("");
-    setLoading(true);
-
     try {
       await signInWithEmailAndPassword(auth, email, password);
       close();
-    } catch (e) {
-      if (e.code === "auth/user-not-found") {
-        setError("No account found with this email.");
-      } else if (e.code === "auth/wrong-password") {
-        setError("Incorrect password.");
-      } else {
-        setError("Login failed. Please try again.");
-      }
-    } finally {
-      setLoading(false);
+    } catch {
+      setError("Invalid email or password.");
     }
   };
 
   const resetPassword = async () => {
-    setError("");
-    setInfo("");
-
     if (!email) {
-      setError("Enter your email to reset password.");
+      setError("Enter your email first.");
       return;
     }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setInfo("Password reset link sent to your email.");
-    } catch {
-      setError("Failed to send reset email.");
-    }
+    await sendPasswordResetEmail(auth, email);
+    setInfo("Password reset email sent.");
   };
 
   return (
     <Modal title="Login" close={close}>
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-
+      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
       {error && <Error text={error} />}
-      {info && <p style={{ color: "green", fontSize: 14 }}>{info}</p>}
-
-      <button onClick={login} disabled={loading}>
-        {loading ? "Logging in..." : "Login"}
-      </button>
-
-      <button
-        onClick={resetPassword}
-        style={{
-          background: "transparent",
-          color: "#333",
-          fontSize: 14,
-          marginTop: 6,
-        }}
-      >
+      {info && <p style={{ color: "green" }}>{info}</p>}
+      <button onClick={login}>Login</button>
+      <button onClick={resetPassword} style={{ background: "transparent" }}>
         Forgot password?
       </button>
     </Modal>
@@ -215,14 +245,8 @@ function SignupModal({ close }) {
       await updateProfile(res.user, { displayName: username });
       await sendEmailVerification(res.user);
       close();
-    } catch (e) {
-      if (e.code === "auth/email-already-in-use") {
-        setError("Email already in use.");
-      } else if (e.code === "auth/weak-password") {
-        setError("Password must be at least 6 characters.");
-      } else {
-        setError("Unable to create account.");
-      }
+    } catch {
+      setError("Signup failed.");
     }
   };
 
@@ -237,48 +261,25 @@ function SignupModal({ close }) {
   );
 }
 
-/* ================= PROFILE (NO AVATAR) ================= */
+/* ================= PROFILE ================= */
 
 function ProfileModal({ close }) {
   const user = auth.currentUser;
-  if (!user) return null;
-
-  const [name, setName] = useState(user.displayName || "");
+  const [name, setName] = useState(user?.displayName || "");
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
 
   const saveProfile = async (e) => {
     e.preventDefault();
-    try {
-      await updateProfile(user, { displayName: name });
-      setStatus("Profile updated.");
-    } catch {
-      setError("Profile update failed.");
-    }
+    await updateProfile(user, { displayName: name });
   };
 
   const changePassword = async () => {
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError("Password too short.");
       return;
     }
-    try {
-      await updatePassword(user, newPassword);
-      setStatus("Password updated.");
-      setNewPassword("");
-    } catch {
-      setError("Re-login required.");
-    }
-  };
-
-  const deleteAccountHandler = async () => {
-    try {
-      await deleteUser(user);
-      close();
-    } catch {
-      setError("Re-login required.");
-    }
+    await updatePassword(user, newPassword);
   };
 
   return (
@@ -288,56 +289,14 @@ function ProfileModal({ close }) {
         <button type="submit">Save</button>
       </form>
 
-      <hr />
-
       <input
         type="password"
         placeholder="New Password"
-        value={newPassword}
         onChange={(e) => setNewPassword(e.target.value)}
       />
       <button onClick={changePassword}>Change Password</button>
 
-      <hr />
-
-      <button
-        onClick={deleteAccountHandler}
-        style={{ background: "#ff5252", color: "#fff" }}
-      >
-        Delete Account
-      </button>
-
-      {status && <p style={{ color: "green" }}>{status}</p>}
       {error && <Error text={error} />}
-    </Modal>
-  );
-}
-
-/* ================= CART ================= */
-
-function CartModal({ close }) {
-  const [cart, setCart] = useState(
-    JSON.parse(localStorage.getItem("cart")) || []
-  );
-
-  const removeItem = (id) => {
-    const updated = cart.filter((item) => item.id !== id);
-    setCart(updated);
-    localStorage.setItem("cart", JSON.stringify(updated));
-  };
-
-  return (
-    <Modal title="Your Cart" close={close}>
-      {cart.length === 0 ? (
-        <p>Your cart is empty.</p>
-      ) : (
-        cart.map((item) => (
-          <div className="cart-item" key={item.id}>
-            <span>{item.name}</span>
-            <button onClick={() => removeItem(item.id)}>Remove</button>
-          </div>
-        ))
-      )}
     </Modal>
   );
 }
