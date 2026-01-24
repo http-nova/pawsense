@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 
 import Nav from "./Navbar/Nav.jsx";
 import Home from "./Home/Home.jsx";
@@ -10,11 +10,10 @@ import ContactUs from "./ContactUs/ContactUs.jsx";
 
 function App() {
   return (
-    <BrowserRouter basename="/pawsense">
+    <HashRouter>
       <Nav />
 
       <Routes>
-        {/* MAIN WEBSITE */}
         <Route
           path="/"
           element={
@@ -28,10 +27,9 @@ function App() {
           }
         />
 
-        {/* ADMIN PANEL */}
-        <Route path="admin" element={<Admin />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
