@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Nav from "./Navbar/Nav.jsx";
 import Home from "./Home/Home.jsx";
@@ -29,7 +29,7 @@ function App() {
         />
 
         {/* ADMIN PANEL */}
-        <Route path="/admin" element={<Admin />} />
+        <Route path="admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
   );
