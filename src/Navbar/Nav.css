@@ -1,5 +1,6 @@
 /* ===== GLOBAL FIX ===== */
 * {
+<<<<<<< Updated upstream
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -161,4 +162,136 @@ body {
     justify-content: space-between;
     align-items: center;
     font-size: 14px;
+=======
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  overflow-x: hidden;
+} /* ===== NAVBAR ===== */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 90px;
+  background-color: #f4fff9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  z-index: 1000;
+  gap: 200px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+} /* ===== LOGO ===== */
+.navbar-logo {
+  height: 70%;
+}
+.navbar-logo img {
+  height: 100%;
+  width: auto;
+}
+.navbar-options {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+} /* ===== LINKS ===== */
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 50px;
+  list-style: none;
+}
+.navbar-links a {
+  text-decoration: none;
+  color: black;
+  font-weight: 500;
+  font-size: 18px;
+} /* ===== CART ===== */
+.navbar-cart img {
+  height: 30px;
+  cursor: pointer;
+} /* ===== ACTIONS ===== */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.navbar-actions button {
+  padding: 12px 22px;
+  border: none;
+  background-color: #dee6a8;
+  border-radius: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 16px;
+}
+.navbar-actions button:hover {
+  background-color: #cfdc7a;
+}
+.user-name {
+  font-weight: bold;
+  font-size: 18px;
+} /* ===== AUTH & CART MODALS ===== */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.auth-modal {
+  background: #fff;
+  padding: 30px;
+  width: 360px;
+  border-radius: 16px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.auth-modal h2 {
+  text-align: center;
+} /* Inputs */
+.auth-modal input {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+} /* Buttons */
+.auth-modal button {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #dee6a8;
+  font-weight: bold;
+  cursor: pointer;
+}
+.auth-modal button:hover {
+  background: #cfdc7a;
+} /* Close button */
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: #000;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+} /* Cart items */
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+>>>>>>> Stashed changes
 }
