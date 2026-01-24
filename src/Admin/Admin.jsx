@@ -8,11 +8,21 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, db, storage } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "../firebase";
 
 const ADMIN_EMAIL = "pawsensemain@gmail.com";
+
+/* ================= HELPERS ================= */
+
+const isValidImageUrl = (url) => {
+  try {
+    const u = new URL(url);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
 
 function Admin() {
   const [user, setUser] = useState(null);
@@ -27,7 +37,6 @@ function Admin() {
     name: "",
     price: "",
     description: "",
-    imageFile: null,
     image: "",
   });
 
@@ -56,94 +65,80 @@ function Admin() {
 
   /* ================= FORM ================= */
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-  const handleImageUpload = (e) =>
-    setForm({ ...form, imageFile: e.target.files[0] });
-
-  /* ================= SAFE IMAGE UPLOAD ================= */
-
-  const uploadImageSafe = (file) =>
-    new Promise((resolve, reject) => {
-      onAuthStateChanged(auth, async (u) => {
-        if (!u) {
-          reject(new Error("Not authenticated"));
-          return;
-        }
-
-        try {
-          const imageRef = ref(
-            storage,
-            `products/${Date.now()}-${file.name}`
-          );
-
-          await uploadBytes(imageRef, file);
-          const url = await getDownloadURL(imageRef);
-          resolve(url);
-        } catch (err) {
-          reject(err);
-        }
-      });
+  const resetForm = () => {
+    setForm({
+      id: null,
+      name: "",
+      price: "",
+      description: "",
+      image: "",
     });
+    setError("");
+  };
 
-  /* ================= SAVE PRODUCT ================= */
+  /* ================= SAVE / UPDATE ================= */
 
   const saveProduct = async () => {
     setError("");
 
-    if (!form.name || !form.price || !form.description) {
-      setError("Fill all fields.");
+    if (!form.name || !form.price || !form.description || !form.image) {
+      setError("All fields are required.");
+      return;
+    }
+
+    if (!isValidImageUrl(form.image)) {
+      setError("Invalid image URL.");
       return;
     }
 
     try {
       setLoading(true);
 
-      let imageUrl = form.image;
-
-      if (form.imageFile) {
-        imageUrl = await uploadImageSafe(form.imageFile);
-      }
-
       if (form.id) {
         await updateDoc(doc(db, "products", form.id), {
           name: form.name,
           price: form.price,
           description: form.description,
-          image: imageUrl,
+          image: form.image,
         });
       } else {
         await addDoc(collection(db, "products"), {
           name: form.name,
           price: form.price,
           description: form.description,
-          image: imageUrl,
+          image: form.image,
           createdAt: serverTimestamp(),
         });
       }
 
-      setForm({
-        id: null,
-        name: "",
-        price: "",
-        description: "",
-        imageFile: null,
-        image: "",
-      });
-
+      resetForm();
       loadProducts();
-    } catch (err) {
-      console.error("SAVE PRODUCT ERROR:", err);
-      setError(err.message || "Failed to save product.");
+    } catch {
+      setError("Failed to save product.");
     } finally {
       setLoading(false);
     }
   };
 
-  /* ================= DELETE ================= */
+  /* ================= EDIT / DELETE ================= */
+
+  const editProduct = (p) => {
+    setForm({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      description: p.description,
+      image: p.image,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const deleteProduct = async (id) => {
+    if (!window.confirm("Delete this product?")) return;
     await deleteDoc(doc(db, "products", id));
     loadProducts();
   };
@@ -161,53 +156,189 @@ function Admin() {
   /* ================= UI ================= */
 
   return (
-    <div style={{ padding: 40, maxWidth: 800 }}>
-      <h1>Admin Panel</h1>
+    <div style={styles.page}>
+      <h1 style={styles.title}>Admin Panel</h1>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      <p style={styles.user}>Logged in as: {user.email}</p>
 
-      <input
-        name="name"
-        placeholder="Product name"
-        value={form.name}
-        onChange={handleChange}
-      />
+      {/* ===== FORM ===== */}
+      <div style={styles.card}>
+        <h2>{form.id ? "Edit Product" : "Add Product"}</h2>
 
-      <input
-        name="price"
-        placeholder="Price"
-        value={form.price}
-        onChange={handleChange}
-      />
+        {error && <p style={styles.error}>{error}</p>}
 
-      <textarea
-        name="description"
-        placeholder="Description"
-        value={form.description}
-        onChange={handleChange}
-      />
+        <input
+          name="name"
+          placeholder="Product name"
+          value={form.name}
+          onChange={handleChange}
+          style={styles.input}
+        />
 
-      <input type="file" accept="image/*" onChange={handleImageUpload} />
+        <input
+          name="price"
+          placeholder="Price"
+          value={form.price}
+          onChange={handleChange}
+          style={styles.input}
+        />
 
-      <button onClick={saveProduct} disabled={loading}>
-        {loading ? "Saving..." : "Save Product"}
-      </button>
+        <textarea
+          name="description"
+          placeholder="Description"
+          value={form.description}
+          onChange={handleChange}
+          style={{ ...styles.input, height: 80 }}
+        />
 
-      <hr />
+        <input
+          name="image"
+          placeholder="Image URL"
+          value={form.image}
+          onChange={handleChange}
+          style={styles.input}
+        />
 
-      {products.map((p) => (
-        <div key={p.id} style={{ marginBottom: 10 }}>
-          <img src={p.image} width="60" alt={p.name} />
-          <b> {p.name}</b> — ₹{p.price}
-          <button onClick={() => deleteProduct(p.id)}>Delete</button>
+        {isValidImageUrl(form.image) && (
+          <img src={form.image} alt="preview" style={styles.preview} />
+        )}
+
+        <div style={styles.actions}>
+          <button onClick={saveProduct} disabled={loading} style={styles.primary}>
+            {loading ? "Saving..." : form.id ? "Update" : "Add"}
+          </button>
+
+          {form.id && (
+            <button onClick={resetForm} style={styles.secondary}>
+              Cancel
+            </button>
+          )}
         </div>
-      ))}
-      <p style={{ color: "blue", fontWeight: "bold" }}>
-  Logged in as: {user?.email || "Not logged in"}
-</p>
+      </div>
 
+      {/* ===== PRODUCTS ===== */}
+      <div style={styles.grid}>
+        {products.map((p) => (
+          <div key={p.id} style={styles.product}>
+            <img src={p.image} alt={p.name} style={styles.thumb} />
+            <h3>{p.name}</h3>
+            <p>₹{p.price}</p>
+
+            <div style={styles.productActions}>
+              <button onClick={() => editProduct(p)} style={styles.edit}>
+                Edit
+              </button>
+              <button onClick={() => deleteProduct(p.id)} style={styles.delete}>
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 export default Admin;
+
+/* ================= STYLES ================= */
+
+const styles = {
+  page: {
+    padding: 20,
+    maxWidth: 1100,
+    margin: "auto",
+  },
+  title: {
+    textAlign: "center",
+  },
+  user: {
+    textAlign: "center",
+    color: "#555",
+    marginBottom: 20,
+  },
+  card: {
+    background: "#fff",
+    padding: 20,
+    borderRadius: 12,
+    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+    marginBottom: 30,
+  },
+  input: {
+    width: "100%",
+    padding: 12,
+    marginBottom: 12,
+    borderRadius: 8,
+    border: "1px solid #ccc",
+    fontSize: 15,
+  },
+  preview: {
+    width: 120,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  actions: {
+    display: "flex",
+    gap: 10,
+  },
+  primary: {
+    flex: 1,
+    padding: 12,
+    background: "#4CAF50",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+  },
+  secondary: {
+    flex: 1,
+    padding: 12,
+    background: "#ccc",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+  },
+  error: {
+    color: "red",
+    marginBottom: 10,
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+    gap: 20,
+  },
+  product: {
+    background: "#fff",
+    borderRadius: 12,
+    padding: 15,
+    textAlign: "center",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+  },
+  thumb: {
+    width: "100%",
+    height: 150,
+    objectFit: "cover",
+    borderRadius: 8,
+  },
+  productActions: {
+    display: "flex",
+    gap: 10,
+    marginTop: 10,
+  },
+  edit: {
+    flex: 1,
+    padding: 8,
+    background: "#2196F3",
+    color: "#fff",
+    border: "none",
+    borderRadius: 6,
+  },
+  delete: {
+    flex: 1,
+    padding: 8,
+    background: "#F44336",
+    color: "#fff",
+    border: "none",
+    borderRadius: 6,
+  },
+};
