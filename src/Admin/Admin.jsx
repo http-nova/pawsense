@@ -13,7 +13,6 @@ import { auth, db, storage } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
 const ADMIN_EMAIL = "pawsensemain@gmail.com";
-const UPLOAD_TIMEOUT = 10000;
 
 function Admin() {
   const [user, setUser] = useState(null);
@@ -39,7 +38,7 @@ function Admin() {
       setUser(u);
       setAuthLoading(false);
     });
-    return () => unsub();
+    return unsub;
   }, []);
 
   /* ================= LOAD PRODUCTS ================= */
@@ -67,19 +66,16 @@ function Admin() {
     setForm({ ...form, imageFile: file });
   };
 
-  /* ================= IMAGE UPLOAD ================= */
+  /* ================= IMAGE UPLOAD (FIXED) ================= */
 
-  const uploadImageWithTimeout = async (file) => {
-    const imageRef = ref(storage, `products/${Date.now()}-${file.name}`);
-
-    const uploadPromise = uploadBytes(imageRef, file)
-      .then(() => getDownloadURL(imageRef));
-
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Upload timeout")), UPLOAD_TIMEOUT)
+  const uploadImage = async (file) => {
+    const imageRef = ref(
+      storage,
+      `products/${Date.now()}-${file.name}`
     );
 
-    return Promise.race([uploadPromise, timeoutPromise]);
+    await uploadBytes(imageRef, file);
+    return await getDownloadURL(imageRef);
   };
 
   /* ================= SAVE PRODUCT ================= */
@@ -94,10 +90,11 @@ function Admin() {
 
     try {
       setLoading(true);
+
       let imageUrl = form.image;
 
       if (form.imageFile) {
-        imageUrl = await uploadImageWithTimeout(form.imageFile);
+        imageUrl = await uploadImage(form.imageFile);
       }
 
       if (form.id) {
@@ -218,7 +215,9 @@ function Admin() {
         <tbody>
           {products.map((p) => (
             <tr key={p.id}>
-              <td><img src={p.image} width="60" alt={p.name} /></td>
+              <td>
+                <img src={p.image} width="60" alt={p.name} />
+              </td>
               <td>{p.name}</td>
               <td>₹{p.price}</td>
               <td>{p.description}</td>
