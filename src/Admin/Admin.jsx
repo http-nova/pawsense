@@ -35,6 +35,16 @@ function Admin() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
+      useEffect(() => {
+  const unsub = onAuthStateChanged(auth, (u) => {
+    console.log("AUTH USER:", u);
+    console.log("EMAIL:", u?.email);
+    setUser(u);
+    setAuthLoading(false);
+  });
+  return unsub;
+}, []);
+
       setUser(u);
       setAuthLoading(false);
     });
