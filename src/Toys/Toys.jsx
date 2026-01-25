@@ -6,25 +6,41 @@ import {
   doc,
   setDoc,
   getDoc,
-  updateDoc
+  updateDoc,
 } from "firebase/firestore";
+import "./Toys.css";
+
 
 function Toys() {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  /* ================= LOAD PRODUCTS ================= */
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
   const fetchProducts = async () => {
-    const snapshot = await getDocs(collection(db, "products"));
-    setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    try {
+      const snapshot = await getDocs(collection(db, "products"));
+      setProducts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  /* ================= ADD TO CART ================= */
 
   const addToCart = async (product) => {
     const user = auth.currentUser;
+
     if (!user) {
-      alert("Please login first");
+      setMessage("Please login to add items to cart.");
+      setTimeout(() => setMessage(""), 2500);
       return;
     }
 
@@ -44,26 +60,51 @@ function Toys() {
       await updateDoc(cartRef, { items });
     } else {
       await setDoc(cartRef, {
-        items: [{ ...product, quantity: 1 }]
+        items: [{ ...product, quantity: 1 }],
       });
     }
+
+    setMessage("Added to cart ✔");
+    setTimeout(() => setMessage(""), 2000);
   };
 
+  /* ================= UI ================= */
+
   return (
-    <section className="toys-section">
+    <section className="toys-section" id="toys">
       <h1>Pet Toys</h1>
 
-      <div className="Toys-card">
-        {products.map(p => (
-          <div className="Toys-box" key={p.id}>
-            <img src={p.image} />
-            <h3>{p.name}</h3>
-            <p>{p.description}</p>
-            <div>${p.price}</div>
-            <button onClick={() => addToCart(p)}>Add to Cart</button>
-          </div>
-        ))}
-      </div>
+      {message && (
+        <p style={{ textAlign: "center", color: "#2e7d32" }}>
+          {message}
+        </p>
+      )}
+
+      {loading ? (
+        <p style={{ textAlign: "center" }}>Loading products…</p>
+      ) : products.length === 0 ? (
+        <p style={{ textAlign: "center" }}>No products available.</p>
+      ) : (
+        <div className="Toys-card">
+          {products.map((p) => (
+            <div className="Toys-box" key={p.id}>
+              <div className="toy-img">
+                <img src={p.image} alt={p.name} />
+              </div>
+
+              <div className="toy-content">
+                <h3>{p.name}</h3>
+                <p>{p.description}</p>
+                <div className="price">₹{p.price}</div>
+
+                <button onClick={() => addToCart(p)}>
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

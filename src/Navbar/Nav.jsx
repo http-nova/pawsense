@@ -29,10 +29,6 @@ const WHATSAPP_NUMBER = "9172200424";
 /* ================= NAV ================= */
 
 function Nav() {
-  const [user, setUser] = useState(null);
-  const [cart, setCart] = useState([]);
-  const [cartCount, setCartCount] = useState(0);
-
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -97,18 +93,22 @@ function Nav() {
 
         <div className="navbar-options">
           <ul className="navbar-links">
-            <li onClick={() => scrollTo("home")}>Home</li>
-            <li onClick={() => scrollTo("toys")}>Toys</li>
-            <li onClick={() => scrollTo("guide")}>Guide</li>
-            <li onClick={() => scrollTo("aboutUs")}>About Us</li>
-            <li onClick={() => scrollTo("contactUs")}>Contact Us</li>
-
-            <li
-              className="navbar-cart"
-              onClick={() =>
-                user ? setShowCart(true) : setShowLogin(true)
-              }
-            >
+            <li>
+              <a href="#home">Home</a>
+            </li>
+            <li>
+              <a href="#toys">Toys</a>
+            </li>
+            <li>
+              <a href="#guide">Guide</a>
+            </li>
+            <li>
+              <a href="#aboutUs">About Us</a>
+            </li>
+            <li>
+              <a href="#contactUs">Contact Us</a>
+            </li>
+            <li className="navbar-cart" onClick={handleCartClick}>
               <img src={cartlogo} alt="Cart" />
               {cartCount > 0 && (
                 <span className="cart-badge">{cartCount}</span>
@@ -119,26 +119,8 @@ function Nav() {
           <div className="navbar-actions">
             {user ? (
               <>
-                <span
-                  className="user-name"
-                  onClick={() => setShowProfile(true)}
-                >
-                  Hi, {user.displayName || user.email}
-                </span>
-
-                {!user.emailVerified && (
-                  <button onClick={() => sendEmailVerification(user)}>
-                    Verify Email
-                  </button>
-                )}
-
-                {user.email === ADMIN_EMAIL && (
-                  <button onClick={() => (window.location.hash = "#/admin")}>
-                    Admin
-                  </button>
-                )}
-
-                <button onClick={() => signOut(auth)}>Logout</button>
+                <span className="user-name">Hi, {user.name}</span>
+                <button onClick={logout}>Logout</button>
               </>
             ) : (
               <>
@@ -166,125 +148,51 @@ function Nav() {
 
 export default Nav;
 
-/* ================= WHATSAPP CHECKOUT ================= */
+/* ================= LOGIN MODAL ================= */
 
-const checkoutOnWhatsApp = (cart, user) => {
-  if (!cart.length) return;
-
-  const customer =
-    user.displayName || user.email || "Unknown User";
-
-  let total = 0;
-  const lines = cart.map((item, i) => {
-    const t = item.price * item.quantity;
-    total += t;
-    return `${i + 1}. ${item.name} × ${item.quantity} = ₹${t}`;
-  });
-
-  const message = `
-🐾 PawSense Order
-
-Customer: ${customer}
-
-${lines.join("\n")}
-
---------------------
-Total: ₹${total}
---------------------
-
-Please confirm availability.
-`;
-
-  window.open(
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
-    "_blank"
-  );
-};
-
-/* ================= CART MODAL ================= */
-
-function CartModal({ cart, user, close }) {
-  const updateQty = async (id, delta) => {
-    const updated = cart
-      .map((i) =>
-        i.id === id
-          ? { ...i, quantity: i.quantity + delta }
-          : i
-      )
-      .filter((i) => i.quantity > 0);
-
-    await updateDoc(doc(db, "cart", user.uid), {
-      items: updated,
-    });
-  };
-
-  const total = cart.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
-
-  return (
-    <Modal title="Your Cart" close={close}>
-      {cart.length === 0 ? (
-        <p>Your cart is empty.</p>
-      ) : (
-        <>
-          {cart.map((item) => (
-            <div className="cart-item" key={item.id}>
-              <span>
-                {item.name} × {item.quantity}
-              </span>
-
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => updateQty(item.id, -1)}>-</button>
-                <button onClick={() => updateQty(item.id, 1)}>+</button>
-              </div>
-            </div>
-          ))}
-
-          <hr />
-          <b>Total: ₹{total}</b>
-
-          <button
-            style={{
-              marginTop: 14,
-              background: "#25D366",
-              color: "#fff",
-              fontWeight: "bold",
-            }}
-            onClick={() => checkoutOnWhatsApp(cart, user)}
-          >
-            Checkout on WhatsApp
-          </button>
-        </>
-      )}
-    </Modal>
-  );
-}
-
-/* ================= LOGIN ================= */
-
-function LoginModal({ close }) {
+function LoginModal({ onClose }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
-  const login = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      close();
-    } catch {
-      setError("Invalid email or password.");
+  const login = () => {
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    const found = users.find(
+      (u) => u.email === email && u.password === password
+    );
+
+    if (!found) {
+      alert("Invalid email or password");
+      return;
     }
+
+    localStorage.setItem("user", JSON.stringify(found));
+    onClose();
+    window.location.reload();
   };
 
   return (
-    <Modal title="Login" close={close}>
-      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-      {error && <Error text={error} />}
-      <button onClick={login}>Login</button>
-    </Modal>
+    <div className="auth-overlay">
+      <div className="auth-modal">
+        <button className="close-btn" onClick={onClose}>
+          ✕
+        </button>
+        <h2>Login</h2>
+
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button onClick={login}>Login</button>
+      </div>
+    </div>
   );
 }
 
@@ -294,51 +202,74 @@ function SignupModal({ close }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
-  const signup = async () => {
-    try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(res.user, { displayName: username });
-      await sendEmailVerification(res.user);
-      close();
-    } catch {
-      setError("Signup failed.");
+  const signup = () => {
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+
+    if (users.some((u) => u.email === email)) {
+      alert("User already exists");
+      return;
     }
+
+    const newUser = {
+      id: Date.now(),
+      name,
+      email,
+      password,
+    };
+
+    users.push(newUser);
+    localStorage.setItem("users", JSON.stringify(users));
+    localStorage.setItem("user", JSON.stringify(newUser));
+
+    onClose();
+    window.location.reload();
   };
 
   return (
-    <Modal title="Sign Up" close={close}>
-      <input placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
-      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-      {error && <Error text={error} />}
-      <button onClick={signup}>Create Account</button>
-    </Modal>
+    <div className="auth-overlay">
+      <div className="auth-modal">
+        <button className="close-btn" onClick={onClose}>
+          ✕
+        </button>
+        <h2>Sign Up</h2>
+
+        <input
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button onClick={signup}>Create Account</button>
+      </div>
+    </div>
   );
 }
 
-/* ================= PROFILE ================= */
+/* ================= CART MODAL ================= */
 
-function ProfileModal({ close }) {
-  const user = auth.currentUser;
-  const [name, setName] = useState(user?.displayName || "");
+function CartModal({ onClose }) {
+  const [cart, setCart] = useState(
+    JSON.parse(localStorage.getItem("cart")) || []
+  );
 
-  const saveProfile = async () => {
-    await updateProfile(user, { displayName: name });
+  const removeItem = (id) => {
+    const updated = cart.filter((item) => item.id !== id);
+    setCart(updated);
+    localStorage.setItem("cart", JSON.stringify(updated));
   };
 
-  return (
-    <Modal title="Edit Profile" close={close}>
-      <input value={name} onChange={(e) => setName(e.target.value)} />
-      <button onClick={saveProfile}>Save</button>
-    </Modal>
-  );
-}
-
-/* ================= UI HELPERS ================= */
-
-function Modal({ title, children, close }) {
   return (
     <div className="auth-overlay">
       <div className="auth-modal">
