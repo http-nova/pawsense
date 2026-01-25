@@ -11,7 +11,6 @@ import {
   updateProfile,
   sendEmailVerification,
   updatePassword,
-  deleteUser,
   sendPasswordResetEmail,
 } from "firebase/auth";
 
@@ -31,7 +30,7 @@ function Nav() {
   const [showCart, setShowCart] = useState(false);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => setUser(u));
+    return onAuthStateChanged(auth, setUser);
   }, []);
 
   const scrollTo = (id) => {
@@ -65,9 +64,7 @@ function Nav() {
               <img
                 src={cartlogo}
                 alt="Cart"
-                onClick={() =>
-                  user ? setShowCart(true) : setShowLogin(true)
-                }
+                onClick={() => (user ? setShowCart(true) : setShowLogin(true))}
               />
             </li>
           </ul>
@@ -78,7 +75,6 @@ function Nav() {
                 <span
                   className="user-name"
                   onClick={() => setShowProfile(true)}
-                  style={{ cursor: "pointer" }}
                 >
                   Hi, {user.displayName || user.email}
                 </span>
@@ -118,11 +114,11 @@ export default Nav;
 /* ================= WHATSAPP CHECKOUT ================= */
 
 const checkoutOnWhatsApp = (cart) => {
-  if (!cart.length) return;
+  if (!cart || cart.length === 0) return;
 
   let total = 0;
   const items = cart.map((item, i) => {
-    const t = item.price * item.quantity;
+    const t = Number(item.price) * item.quantity;
     total += t;
     return `${i + 1}. ${item.name} × ${item.quantity} = ₹${t}`;
   });
@@ -140,7 +136,7 @@ Please confirm availability.
 `;
 
   window.open(
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg.trim())}`,
     "_blank"
   );
 };
