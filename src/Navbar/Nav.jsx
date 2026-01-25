@@ -14,7 +14,13 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 
-import { auth } from "../firebase";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+} from "firebase/firestore";
+
+import { auth, db } from "../firebase";
 
 const ADMIN_EMAIL = "pawsensemain@gmail.com";
 const NAV_HEIGHT = 90;
@@ -23,14 +29,51 @@ const NAV_HEIGHT = 90;
 
 function Nav() {
   const [user, setUser] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [cartCount, setCartCount] = useState(0);
+
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showCart, setShowCart] = useState(false);
 
+  /* ================= AUTH ================= */
+
   useEffect(() => {
-    return onAuthStateChanged(auth, setUser);
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (u) listenToCart(u.uid);
+      else {
+        setCart([]);
+        setCartCount(0);
+      }
+    });
   }, []);
+
+  /* ================= CART LISTENER ================= */
+
+  const listenToCart = (uid) => {
+    const ref = doc(db, "cart", uid);
+
+    return onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        setCart([]);
+        setCartCount(0);
+        return;
+      }
+
+      const items = snap.data().items || [];
+      setCart(items);
+
+      const totalQty = items.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+      );
+      setCartCount(totalQty);
+    });
+  };
+
+  /* ================= SCROLL ================= */
 
   const scrollTo = (id) => {
     const el = document.getElementById(id);
@@ -46,7 +89,6 @@ function Nav() {
 
   return (
     <>
-      {/* ================= NAVBAR ================= */}
       <nav className="navbar">
         <div className="navbar-logo">
           <img src={imglogo} alt="PawSense Logo" />
@@ -54,21 +96,19 @@ function Nav() {
 
         <div className="navbar-options">
           <ul className="navbar-links">
-            <li style={{ cursor: "pointer" }} onClick={() => scrollTo("home")}>Home</li>
-            <li style={{ cursor: "pointer" }} onClick={() => scrollTo("toys")}>Toys</li>
-            <li style={{ cursor: "pointer" }} onClick={() => scrollTo("guide")}>Guide</li>
-            <li style={{ cursor: "pointer" }} onClick={() => scrollTo("aboutUs")}>About Us</li>
-            <li style={{ cursor: "pointer" }} onClick={() => scrollTo("contactUs")}>Contact Us</li>
+            <li onClick={() => scrollTo("home")}>Home</li>
+            <li onClick={() => scrollTo("toys")}>Toys</li>
+            <li onClick={() => scrollTo("guide")}>Guide</li>
+            <li onClick={() => scrollTo("aboutUs")}>About Us</li>
+            <li onClick={() => scrollTo("contactUs")}>Contact Us</li>
 
-            <li className="navbar-cart">
-              <img
-                src={cartlogo}
-                alt="Cart"
-                style={{ cursor: "pointer" }}
-                onClick={() =>
-                  user ? setShowCart(true) : setShowLogin(true)
-                }
-              />
+            <li className="navbar-cart" onClick={() =>
+              user ? setShowCart(true) : setShowLogin(true)
+            }>
+              <img src={cartlogo} alt="Cart" />
+              {cartCount > 0 && (
+                <span className="cart-badge">{cartCount}</span>
+              )}
             </li>
           </ul>
 
@@ -77,7 +117,6 @@ function Nav() {
               <>
                 <span
                   className="user-name"
-                  style={{ cursor: "pointer" }}
                   onClick={() => setShowProfile(true)}
                 >
                   Hi, {user.displayName || user.email}
@@ -90,7 +129,7 @@ function Nav() {
                 )}
 
                 {user.email === ADMIN_EMAIL && (
-                  <button onClick={() => window.location.href = "#/admin"}>
+                  <button onClick={() => window.location.hash = "#/admin"}>
                     Admin
                   </button>
                 )}
@@ -107,23 +146,74 @@ function Nav() {
         </div>
       </nav>
 
-      {/* ================= MODALS ================= */}
-      {showLogin && <LoginModal close={() => setShowLogin(false)} openSignup={() => {
-        setShowLogin(false);
-        setShowSignup(true);
-      }} />}
+      {showLogin && <LoginModal close={() => setShowLogin(false)} />}
       {showSignup && <SignupModal close={() => setShowSignup(false)} />}
       {showProfile && <ProfileModal close={() => setShowProfile(false)} />}
-      {showCart && <CartModal close={() => setShowCart(false)} />}
+      {showCart && (
+        <CartModal
+          cart={cart}
+          user={user}
+          close={() => setShowCart(false)}
+        />
+      )}
     </>
   );
 }
 
 export default Nav;
 
+/* ================= CART MODAL ================= */
+
+function CartModal({ cart, user, close }) {
+  const updateQty = async (id, delta) => {
+    const updated = cart
+      .map((i) =>
+        i.id === id
+          ? { ...i, quantity: i.quantity + delta }
+          : i
+      )
+      .filter((i) => i.quantity > 0);
+
+    await updateDoc(doc(db, "cart", user.uid), {
+      items: updated,
+    });
+  };
+
+  const total = cart.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0
+  );
+
+  return (
+    <Modal title="Your Cart" close={close}>
+      {cart.length === 0 ? (
+        <p>Your cart is empty.</p>
+      ) : (
+        <>
+          {cart.map((item) => (
+            <div className="cart-item" key={item.id}>
+              <span>
+                {item.name} × {item.quantity}
+              </span>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => updateQty(item.id, -1)}>-</button>
+                <button onClick={() => updateQty(item.id, 1)}>+</button>
+              </div>
+            </div>
+          ))}
+
+          <hr />
+          <b>Total: ₹{total}</b>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 /* ================= LOGIN ================= */
 
-function LoginModal({ close, openSignup }) {
+function LoginModal({ close }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -131,18 +221,14 @@ function LoginModal({ close, openSignup }) {
 
   const login = async () => {
     setError("");
-    setInfo("");
-
     try {
       await signInWithEmailAndPassword(auth, email, password);
       close();
     } catch (e) {
       if (e.code === "auth/user-not-found") {
-        setError("No account found. Please create an account.");
+        setError("No account found. Please sign up.");
       } else if (e.code === "auth/wrong-password") {
         setError("Incorrect password.");
-      } else if (e.code === "auth/invalid-email") {
-        setError("Invalid email address.");
       } else {
         setError("Login failed.");
       }
@@ -151,16 +237,11 @@ function LoginModal({ close, openSignup }) {
 
   const resetPassword = async () => {
     if (!email) {
-      setError("Enter your email first.");
+      setError("Enter email first.");
       return;
     }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setInfo("Password reset link sent to your email.");
-    } catch {
-      setError("Failed to send reset email.");
-    }
+    await sendPasswordResetEmail(auth, email);
+    setInfo("Password reset email sent.");
   };
 
   return (
@@ -169,16 +250,12 @@ function LoginModal({ close, openSignup }) {
       <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
 
       {error && <Error text={error} />}
-      {info && <p style={{ color: "green", fontSize: 14 }}>{info}</p>}
+      {info && <p style={{ color: "green" }}>{info}</p>}
 
       <button onClick={login}>Login</button>
       <button onClick={resetPassword} style={{ background: "transparent" }}>
-        Forgot Password?
+        Forgot password?
       </button>
-
-      <p style={{ fontSize: 13, textAlign: "center", cursor: "pointer" }} onClick={openSignup}>
-        No account? <b>Create one</b>
-      </p>
     </Modal>
   );
 }
@@ -192,21 +269,13 @@ function SignupModal({ close }) {
   const [error, setError] = useState("");
 
   const signup = async () => {
-    setError("");
-
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(res.user, { displayName: username });
       await sendEmailVerification(res.user);
       close();
-    } catch (e) {
-      if (e.code === "auth/email-already-in-use") {
-        setError("Email already registered.");
-      } else if (e.code === "auth/weak-password") {
-        setError("Password must be at least 6 characters.");
-      } else {
-        setError("Signup failed.");
-      }
+    } catch {
+      setError("Signup failed.");
     }
   };
 
@@ -215,7 +284,6 @@ function SignupModal({ close }) {
       <input placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
       <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
       <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-
       {error && <Error text={error} />}
       <button onClick={signup}>Create Account</button>
     </Modal>
@@ -229,59 +297,32 @@ function ProfileModal({ close }) {
   const [name, setName] = useState(user?.displayName || "");
   const [newPassword, setNewPassword] = useState("");
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
 
   const saveProfile = async () => {
-    try {
-      await updateProfile(user, { displayName: name });
-      setStatus("Profile updated.");
-    } catch {
-      setError("Profile update failed.");
-    }
+    await updateProfile(user, { displayName: name });
   };
 
   const changePassword = async () => {
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError("Password too short.");
       return;
     }
-
-    try {
-      await updatePassword(user, newPassword);
-      setStatus("Password changed successfully.");
-      setNewPassword("");
-    } catch {
-      setError("Re-login required to change password.");
-    }
+    await updatePassword(user, newPassword);
   };
 
   return (
     <Modal title="Edit Profile" close={close}>
       <input value={name} onChange={(e) => setName(e.target.value)} />
-      <button onClick={saveProfile}>Save Profile</button>
-
-      <hr />
+      <button onClick={saveProfile}>Save</button>
 
       <input
         type="password"
         placeholder="New Password"
-        value={newPassword}
         onChange={(e) => setNewPassword(e.target.value)}
       />
       <button onClick={changePassword}>Change Password</button>
 
-      {status && <p style={{ color: "green" }}>{status}</p>}
       {error && <Error text={error} />}
-    </Modal>
-  );
-}
-
-/* ================= CART (UI ONLY) ================= */
-
-function CartModal({ close }) {
-  return (
-    <Modal title="Your Cart" close={close}>
-      <p>Cart is handled via Firestore.</p>
     </Modal>
   );
 }
