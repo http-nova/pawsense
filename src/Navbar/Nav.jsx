@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./Nav.css";
 import imglogo from "../assets/pawsense-logo.png";
 import cartlogo from "../assets/cart.png";
@@ -10,16 +10,9 @@ import {
   onAuthStateChanged,
   updateProfile,
   sendEmailVerification,
-  updatePassword,
-  sendPasswordResetEmail,
 } from "firebase/auth";
 
-import {
-  doc,
-  onSnapshot,
-  updateDoc,
-} from "firebase/firestore";
-
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 const ADMIN_EMAIL = "pawsensemain@gmail.com";
@@ -29,46 +22,58 @@ const WHATSAPP_NUMBER = "9172200424";
 /* ================= NAV ================= */
 
 function Nav() {
+  const [user, setUser] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [cartCount, setCartCount] = useState(0);
+
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showCart, setShowCart] = useState(false);
 
-  /* ================= AUTH ================= */
+  const cartUnsubRef = useRef(null);
+
+  /* ================= AUTH + CART ================= */
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
+    const authUnsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (u) listenToCart(u.uid);
-      else {
+
+      // cleanup old cart listener
+      if (cartUnsubRef.current) {
+        cartUnsubRef.current();
+        cartUnsubRef.current = null;
+      }
+
+      if (u) {
+        const cartRef = doc(db, "cart", u.uid);
+        cartUnsubRef.current = onSnapshot(cartRef, (snap) => {
+          if (!snap.exists()) {
+            setCart([]);
+            setCartCount(0);
+            return;
+          }
+
+          const items = snap.data().items || [];
+          setCart(items);
+
+          const totalQty = items.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+          setCartCount(totalQty);
+        });
+      } else {
         setCart([]);
         setCartCount(0);
       }
     });
+
+    return () => {
+      authUnsub();
+      if (cartUnsubRef.current) cartUnsubRef.current();
+    };
   }, []);
-
-  /* ================= CART LISTENER ================= */
-
-  const listenToCart = (uid) => {
-    const ref = doc(db, "cart", uid);
-
-    return onSnapshot(ref, (snap) => {
-      if (!snap.exists()) {
-        setCart([]);
-        setCartCount(0);
-        return;
-      }
-
-      const items = snap.data().items || [];
-      setCart(items);
-
-      const totalQty = items.reduce(
-        (sum, item) => sum + item.quantity,
-        0
-      );
-      setCartCount(totalQty);
-    });
-  };
 
   /* ================= SCROLL ================= */
 
@@ -93,22 +98,27 @@ function Nav() {
 
         <div className="navbar-options">
           <ul className="navbar-links">
-            <li>
-              <a href="#home">Home</a>
-            </li>
-            <li>
-              <a href="#toys">Toys</a>
-            </li>
-            <li>
-              <a href="#guide">Guide</a>
-            </li>
-            <li>
-              <a href="#aboutUs">About Us</a>
-            </li>
-            <li>
-              <a href="#contactUs">Contact Us</a>
-            </li>
-            <li className="navbar-cart" onClick={handleCartClick}>
+            {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
+              <li
+                key={id}
+                style={{ cursor: "pointer" }}
+                onClick={() => scrollTo(id)}
+              >
+                {id === "aboutUs"
+                  ? "About Us"
+                  : id === "contactUs"
+                  ? "Contact Us"
+                  : id.charAt(0).toUpperCase() + id.slice(1)}
+              </li>
+            ))}
+
+            <li
+              className="navbar-cart"
+              style={{ cursor: "pointer", position: "relative" }}
+              onClick={() =>
+                user ? setShowCart(true) : setShowLogin(true)
+              }
+            >
               <img src={cartlogo} alt="Cart" />
               {cartCount > 0 && (
                 <span className="cart-badge">{cartCount}</span>
@@ -119,8 +129,27 @@ function Nav() {
           <div className="navbar-actions">
             {user ? (
               <>
-                <span className="user-name">Hi, {user.name}</span>
-                <button onClick={logout}>Logout</button>
+                <span
+                  className="user-name"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setShowProfile(true)}
+                >
+                  Hi, {user.displayName || user.email}
+                </span>
+
+                {!user.emailVerified && (
+                  <button onClick={() => sendEmailVerification(user)}>
+                    Verify Email
+                  </button>
+                )}
+
+                {user.email === ADMIN_EMAIL && (
+                  <button onClick={() => (window.location.hash = "#/admin")}>
+                    Admin
+                  </button>
+                )}
+
+                <button onClick={() => signOut(auth)}>Logout</button>
               </>
             ) : (
               <>
@@ -148,51 +177,116 @@ function Nav() {
 
 export default Nav;
 
-/* ================= LOGIN MODAL ================= */
+/* ================= WHATSAPP ================= */
 
-function LoginModal({ onClose }) {
+const checkoutOnWhatsApp = (cart, user) => {
+  if (!cart.length) return;
+
+  const customer = user.displayName || user.email;
+  let total = 0;
+
+  const lines = cart.map((i, idx) => {
+    const t = i.price * i.quantity;
+    total += t;
+    return `${idx + 1}. ${i.name} × ${i.quantity} = ₹${t}`;
+  });
+
+  const msg = `
+🐾 PawSense Order
+Customer: ${customer}
+
+${lines.join("\n")}
+
+Total: ₹${total}
+`;
+
+  window.open(
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
+};
+
+/* ================= CART MODAL ================= */
+
+function CartModal({ cart, user, close }) {
+  const updateQty = async (id, delta) => {
+    const updated = cart
+      .map((i) =>
+        i.id === id ? { ...i, quantity: i.quantity + delta } : i
+      )
+      .filter((i) => i.quantity > 0);
+
+    await updateDoc(doc(db, "cart", user.uid), {
+      items: updated,
+    });
+  };
+
+  const total = cart.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0
+  );
+
+  return (
+    <Modal title="Your Cart" close={close}>
+      {cart.length === 0 ? (
+        <p>Your cart is empty.</p>
+      ) : (
+        <>
+          {cart.map((item) => (
+            <div className="cart-item" key={item.id}>
+              <span>
+                {item.name} × {item.quantity}
+              </span>
+              <div>
+                <button onClick={() => updateQty(item.id, -1)}>-</button>
+                <button onClick={() => updateQty(item.id, 1)}>+</button>
+              </div>
+            </div>
+          ))}
+
+          <hr />
+          <b>Total: ₹{total}</b>
+
+          <button
+            style={{
+              marginTop: 14,
+              background: "#25D366",
+              color: "#fff",
+              fontWeight: "bold",
+            }}
+            onClick={() => checkoutOnWhatsApp(cart, user)}
+          >
+            Checkout on WhatsApp
+          </button>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/* ================= LOGIN ================= */
+
+function LoginModal({ close }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const login = () => {
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-    const found = users.find(
-      (u) => u.email === email && u.password === password
-    );
-
-    if (!found) {
-      alert("Invalid email or password");
-      return;
+  const login = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      close();
+    } catch {
+      setError("Invalid email or password.");
     }
-
-    localStorage.setItem("user", JSON.stringify(found));
-    onClose();
-    window.location.reload();
   };
 
   return (
-    <div className="auth-overlay">
-      <div className="auth-modal">
-        <button className="close-btn" onClick={onClose}>
-          ✕
-        </button>
-        <h2>Login</h2>
-
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button onClick={login}>Login</button>
-      </div>
-    </div>
+    <Modal title="Login" close={close}>
+      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+      {error && <Error text={error} />}
+      <button onClick={login}>Login</button>
+    </Modal>
   );
 }
 
@@ -202,74 +296,51 @@ function SignupModal({ close }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const signup = () => {
-    const users = JSON.parse(localStorage.getItem("users")) || [];
-
-    if (users.some((u) => u.email === email)) {
-      alert("User already exists");
-      return;
+  const signup = async () => {
+    try {
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(res.user, { displayName: username });
+      await sendEmailVerification(res.user);
+      close();
+    } catch {
+      setError("Signup failed.");
     }
-
-    const newUser = {
-      id: Date.now(),
-      name,
-      email,
-      password,
-    };
-
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-    localStorage.setItem("user", JSON.stringify(newUser));
-
-    onClose();
-    window.location.reload();
   };
 
   return (
-    <div className="auth-overlay">
-      <div className="auth-modal">
-        <button className="close-btn" onClick={onClose}>
-          ✕
-        </button>
-        <h2>Sign Up</h2>
-
-        <input
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button onClick={signup}>Create Account</button>
-      </div>
-    </div>
+    <Modal title="Sign Up" close={close}>
+      <input placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
+      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+      {error && <Error text={error} />}
+      <button onClick={signup}>Create Account</button>
+    </Modal>
   );
 }
 
-/* ================= CART MODAL ================= */
+/* ================= PROFILE ================= */
 
-function CartModal({ onClose }) {
-  const [cart, setCart] = useState(
-    JSON.parse(localStorage.getItem("cart")) || []
-  );
+function ProfileModal({ close }) {
+  const user = auth.currentUser;
+  const [name, setName] = useState(user?.displayName || "");
 
-  const removeItem = (id) => {
-    const updated = cart.filter((item) => item.id !== id);
-    setCart(updated);
-    localStorage.setItem("cart", JSON.stringify(updated));
+  const saveProfile = async () => {
+    await updateProfile(user, { displayName: name });
   };
 
+  return (
+    <Modal title="Edit Profile" close={close}>
+      <input value={name} onChange={(e) => setName(e.target.value)} />
+      <button onClick={saveProfile}>Save</button>
+    </Modal>
+  );
+}
+
+/* ================= UI ================= */
+
+function Modal({ title, children, close }) {
   return (
     <div className="auth-overlay">
       <div className="auth-modal">
