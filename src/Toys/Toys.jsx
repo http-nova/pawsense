@@ -148,7 +148,7 @@ function Toys() {
       {loading ? <p className="center">Loading…</p> : renderCards(products)}
 
       {/* ⭐ BEST SELLERS */}
-      <h1 className="best-title">🔥 Best Sellers</h1>
+      <h1 className="best-title">Best Sellers</h1>
 
       {bestSellers.length === 0 ? (
         <p className="center">No best sellers yet.</p>
