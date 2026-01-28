@@ -6,14 +6,27 @@
 }
 
 /* ===== Heading ===== */
-
 .toys-section h1 {
-        text-align: center;
+    text-align: center;
     font-size: 36px;
     margin: 0 0 20px 0;
     padding: 40px 0;
 }
 
+.best-title {
+    padding-top: 20px;
+}
+
+/* ===== Messages ===== */
+.msg {
+    text-align: center;
+    color: #2e7d32;
+    font-weight: 500;
+}
+
+.center {
+    text-align: center;
+}
 
 /* ===== Horizontal Scroll ===== */
 .Toys-card {
@@ -42,7 +55,7 @@
     transform: scale(1.05);
 }
 
-/* ===== PERFECT SQUARE IMAGE ===== */
+/* ===== Image ===== */
 .toy-img {
     width: 100%;
     aspect-ratio: 1 / 1;
@@ -68,16 +81,34 @@
     margin-bottom: 6px;
 }
 
-.toy-content p {
+/* ===== Description Clamp ===== */
+.toy-desc {
     font-size: 12px;
     color: #555;
-    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.toy-desc.expanded {
+    -webkit-line-clamp: unset;
+}
+
+.read-more {
+    font-size: 12px;
+    color: #2e7d32;
+    cursor: pointer;
+}
+
+.read-more:hover {
+    text-decoration: underline;
 }
 
 .price {
     font-size: 17px;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin: 10px 0;
 }
 
 /* ===== Button ===== */
