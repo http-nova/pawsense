@@ -41,18 +41,14 @@ function Nav() {
       if (cartUnsubRef.current) cartUnsubRef.current();
 
       if (u) {
-        const cartRef = doc(db, "cart", u.uid);
-        cartUnsubRef.current = onSnapshot(cartRef, (snap) => {
-          if (!snap.exists()) {
-            setCart([]);
-            setCartCount(0);
-            return;
+        cartUnsubRef.current = onSnapshot(
+          doc(db, "cart", u.uid),
+          (snap) => {
+            const items = snap.exists() ? snap.data().items || [] : [];
+            setCart(items);
+            setCartCount(items.reduce((s, i) => s + i.quantity, 0));
           }
-
-          const items = snap.data().items || [];
-          setCart(items);
-          setCartCount(items.reduce((s, i) => s + i.quantity, 0));
-        });
+        );
       } else {
         setCart([]);
         setCartCount(0);
@@ -83,20 +79,32 @@ function Nav() {
   return (
     <>
       <nav className="navbar">
+        {/* LOGO */}
         <div className="navbar-logo">
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
-        {/* HAMBURGER */}
-        <div
-          className={`hamburger ${menuOpen ? "active" : ""}`}
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          <span></span>
-          <span></span>
-          <span></span>
+        {/* RIGHT ICONS (CART + HAMBURGER) */}
+        <div className="nav-right">
+          <div
+            className="navbar-cart"
+            onClick={() => (user ? setShowCart(true) : setShowLogin(true))}
+          >
+            <img src={cartlogo} alt="Cart" />
+            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+          </div>
+
+          <div
+            className={`hamburger ${menuOpen ? "active" : ""}`}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
         </div>
 
+        {/* MENU */}
         <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
           <ul className="navbar-links">
             {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
@@ -108,25 +116,13 @@ function Nav() {
                   : id.charAt(0).toUpperCase() + id.slice(1)}
               </li>
             ))}
-
-            <li
-              className="navbar-cart"
-              onClick={() => (user ? setShowCart(true) : setShowLogin(true))}
-            >
-              <img src={cartlogo} alt="Cart" />
-              {cartCount > 0 && (
-                <span className="cart-badge">{cartCount}</span>
-              )}
-            </li>
           </ul>
 
+          {/* ACTIONS */}
           <div className="navbar-actions">
             {user ? (
               <>
-                <span
-                  className="user-name"
-                  onClick={() => setShowProfile(true)}
-                >
+                <span className="user-name" onClick={() => setShowProfile(true)}>
                   Hi, {user.displayName || user.email}
                 </span>
 
@@ -145,10 +141,10 @@ function Nav() {
                 <button onClick={() => signOut(auth)}>Logout</button>
               </>
             ) : (
-              <>
+              <div className="auth-inline">
                 <button onClick={() => setShowSignup(true)}>Sign Up</button>
                 <button onClick={() => setShowLogin(true)}>Login</button>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -157,107 +153,11 @@ function Nav() {
       {showLogin && <LoginModal close={() => setShowLogin(false)} />}
       {showSignup && <SignupModal close={() => setShowSignup(false)} />}
       {showProfile && <ProfileModal close={() => setShowProfile(false)} />}
-      {showCart && <CartModal cart={cart} user={user} close={() => setShowCart(false)} />}
+      {showCart && (
+        <CartModal cart={cart} user={user} close={() => setShowCart(false)} />
+      )}
     </>
   );
 }
 
 export default Nav;
-
-/* ================= CART ================= */
-
-const checkoutOnWhatsApp = (cart, user) => {
-  let total = 0;
-  const lines = cart.map((i, idx) => {
-    const t = i.price * i.quantity;
-    total += t;
-    return `${idx + 1}. ${i.name} × ${i.quantity} = ₹${t}`;
-  });
-
-  const msg = `🐾 PawSense Order\n\n${lines.join("\n")}\n\nTotal: ₹${total}`;
-  window.open(
-    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
-    "_blank"
-  );
-};
-
-function CartModal({ cart, user, close }) {
-  const updateQty = async (id, delta) => {
-    const updated = cart
-      .map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
-      .filter((i) => i.quantity > 0);
-
-    await updateDoc(doc(db, "cart", user.uid), { items: updated });
-  };
-
-  const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-
-  return (
-    <Modal title="Your Cart" close={close}>
-      {cart.map((i) => (
-        <div className="cart-item" key={i.id}>
-          <span>{i.name} × {i.quantity}</span>
-          <div>
-            <button onClick={() => updateQty(i.id, -1)}>-</button>
-            <button onClick={() => updateQty(i.id, 1)}>+</button>
-          </div>
-        </div>
-      ))}
-      <b>Total: ₹{total}</b>
-      <button
-        style={{ background: "#25D366", color: "#fff" }}
-        onClick={() => checkoutOnWhatsApp(cart, user)}
-      >
-        Checkout on WhatsApp
-      </button>
-    </Modal>
-  );
-}
-
-/* ================= MODALS ================= */
-
-function LoginModal({ close }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  return (
-    <Modal title="Login" close={close}>
-      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={() => signInWithEmailAndPassword(auth, email, password)}>Login</button>
-    </Modal>
-  );
-}
-
-function SignupModal({ close }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  return (
-    <Modal title="Sign Up" close={close}>
-      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={() => createUserWithEmailAndPassword(auth, email, password)}>Create</button>
-    </Modal>
-  );
-}
-
-function ProfileModal({ close }) {
-  return (
-    <Modal title="Profile" close={close}>
-      <p>Edit profile coming soon</p>
-    </Modal>
-  );
-}
-
-function Modal({ title, children, close }) {
-  return (
-    <div className="auth-overlay">
-      <div className="auth-modal">
-        <button className="close-btn" onClick={close}>✕</button>
-        <h2>{title}</h2>
-        {children}
-      </div>
-    </div>
-  );
-}
