@@ -106,26 +106,28 @@ body {
   font-size: 17px;
 }
 
-/* MOBILE */
 @media (max-width: 768px) {
   .hamburger {
     display: flex;
   }
 
+  /* HIDE MENU COMPLETELY BY DEFAULT */
   .navbar-options {
     position: absolute;
     top: 90px;
     left: 0;
     width: 100%;
     background: #f4fff9;
-    transform: translateY(-120%);
-    transition: 0.3s;
+    display: none;              /* 🔥 KEY FIX */
+    flex-direction: column;
+    align-items: center;
     padding: 20px 0;
-    justify-content: center;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
   }
 
+  /* SHOW ONLY WHEN OPEN */
   .navbar-options.open {
-    transform: translateY(0);
+    display: flex;              /* 🔥 KEY FIX */
   }
 
   .navbar-links {
