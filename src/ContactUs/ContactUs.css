@@ -1,16 +1,71 @@
+/* ===== CONTACT SECTION ===== */
 .contact-section {
-    width: 100%;
-    height: 712px;
-    background-color: #A8E6CF;
+  width: 100%;
+  min-height: 712px; /* allow content to grow */
+  background-color: #A8E6CF;
+  padding-bottom: 40px;
 }
 
+/* ===== HEADING ===== */
 .contact-section h1 {
-    text-align: center;
-    font-size: 36px;
-    margin: 0 0 20px 0;
-    padding: 40px 0;
+  text-align: center;
+  font-size: 36px;
+  margin: 0;
+  padding: 40px 0 20px;
 }
-.contact-section p{
-    font-size: 20px;
-    padding: 0px 40px;
+
+/* ===== CONTENT ===== */
+.contact-section p {
+  font-size: 20px;
+  padding: 0 40px;
+  line-height: 1.6;
+}
+
+/* Lists inside content */
+.contact-section ul {
+  margin-top: 10px;
+  padding-left: 40px;
+}
+
+.contact-section li {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+/* ================= TABLET ================= */
+@media (max-width: 768px) {
+  .contact-section h1 {
+    font-size: 30px;
+    padding: 30px 0 16px;
+  }
+
+  .contact-section p {
+    font-size: 18px;
+    padding: 0 24px;
+  }
+
+  .contact-section ul {
+    padding-left: 24px;
+  }
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 480px) {
+  .contact-section {
+    min-height: auto;
+    padding-bottom: 30px;
+  }
+
+  .contact-section h1 {
+    font-size: 26px;
+  }
+
+  .contact-section p {
+    font-size: 16px;
+    padding: 0 16px;
+  }
+
+  .contact-section li {
+    font-size: 15px;
+  }
 }
