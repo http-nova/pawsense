@@ -19,6 +19,8 @@ const ADMIN_EMAIL = "pawsensemain@gmail.com";
 const NAV_HEIGHT = 90;
 const WHATSAPP_NUMBER = "9172200424";
 
+/* ================= NAV ================= */
+
 function Nav() {
   const [user, setUser] = useState(null);
   const [cart, setCart] = useState([]);
@@ -35,20 +37,27 @@ function Nav() {
   /* ================= AUTH + CART ================= */
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const authUnsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
 
-      if (cartUnsubRef.current) cartUnsubRef.current();
+      if (cartUnsubRef.current) {
+        cartUnsubRef.current();
+        cartUnsubRef.current = null;
+      }
 
       if (u) {
-        cartUnsubRef.current = onSnapshot(
-          doc(db, "cart", u.uid),
-          (snap) => {
-            const items = snap.exists() ? snap.data().items || [] : [];
-            setCart(items);
-            setCartCount(items.reduce((s, i) => s + i.quantity, 0));
+        const cartRef = doc(db, "cart", u.uid);
+        cartUnsubRef.current = onSnapshot(cartRef, (snap) => {
+          if (!snap.exists()) {
+            setCart([]);
+            setCartCount(0);
+            return;
           }
-        );
+
+          const items = snap.data().items || [];
+          setCart(items);
+          setCartCount(items.reduce((s, i) => s + i.quantity, 0));
+        });
       } else {
         setCart([]);
         setCartCount(0);
@@ -56,7 +65,7 @@ function Nav() {
     });
 
     return () => {
-      unsub();
+      authUnsub();
       if (cartUnsubRef.current) cartUnsubRef.current();
     };
   }, []);
@@ -84,29 +93,29 @@ function Nav() {
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT SIDE (USER + CART + HAMBURGER) */}
         <div className="nav-right">
-          {/* USER */}
+          {/* USER / LOGIN */}
           {user ? (
             <span
               className="nav-username"
               onClick={() => setShowProfile(true)}
             >
-              Hi, {user.displayName || "User"}
+              Hi, {user.displayName || user.email}
             </span>
           ) : (
-            <button
-              className="nav-login-btn"
-              onClick={() => setShowLogin(true)}
-            >
-              Login
-            </button>
+            <div className="auth-inline">
+              <button onClick={() => setShowSignup(true)}>Sign Up</button>
+              <button onClick={() => setShowLogin(true)}>Login</button>
+            </div>
           )}
 
           {/* CART */}
           <div
             className="navbar-cart"
-            onClick={() => (user ? setShowCart(true) : setShowLogin(true))}
+            onClick={() =>
+              user ? setShowCart(true) : setShowLogin(true)
+            }
           >
             <img src={cartlogo} alt="Cart" />
             {cartCount > 0 && (
@@ -125,7 +134,7 @@ function Nav() {
           </div>
         </div>
 
-        {/* MENU (LINKS ONLY) */}
+        {/* HAMBURGER MENU (LINKS ONLY) */}
         <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
           <ul className="navbar-links">
             {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
@@ -141,6 +150,7 @@ function Nav() {
         </div>
       </nav>
 
+      {/* MODALS */}
       {showLogin && <LoginModal close={() => setShowLogin(false)} />}
       {showSignup && <SignupModal close={() => setShowSignup(false)} />}
       {showProfile && <ProfileModal close={() => setShowProfile(false)} />}
@@ -153,18 +163,52 @@ function Nav() {
 
 export default Nav;
 
-/* ================= CART ================= */
+/* ================= WHATSAPP ================= */
+
+const checkoutOnWhatsApp = (cart, user) => {
+  if (!cart.length) return;
+
+  const customer = user.displayName || user.email;
+  let total = 0;
+
+  const lines = cart.map((i, idx) => {
+    const t = i.price * i.quantity;
+    total += t;
+    return `${idx + 1}. ${i.name} × ${i.quantity} = ₹${t}`;
+  });
+
+  const msg = `
+🐾 PawSense Order
+Customer: ${customer}
+
+${lines.join("\n")}
+
+Total: ₹${total}
+`;
+
+  window.open(
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
+};
+
+/* ================= CART MODAL ================= */
 
 function CartModal({ cart, user, close }) {
   const updateQty = async (id, delta) => {
     const updated = cart
-      .map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
+      .map((i) =>
+        i.id === id ? { ...i, quantity: i.quantity + delta } : i
+      )
       .filter((i) => i.quantity > 0);
 
     await updateDoc(doc(db, "cart", user.uid), { items: updated });
   };
 
-  const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const total = cart.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0
+  );
 
   return (
     <Modal title="Your Cart" close={close}>
@@ -172,27 +216,51 @@ function CartModal({ cart, user, close }) {
         <p>Your cart is empty.</p>
       ) : (
         <>
-          {cart.map((i) => (
-            <div className="cart-item" key={i.id}>
-              <span>{i.name} × {i.quantity}</span>
+          {cart.map((item) => (
+            <div className="cart-item" key={item.id}>
+              <span>{item.name} × {item.quantity}</span>
               <div>
-                <button onClick={() => updateQty(i.id, -1)}>-</button>
-                <button onClick={() => updateQty(i.id, 1)}>+</button>
+                <button onClick={() => updateQty(item.id, -1)}>-</button>
+                <button onClick={() => updateQty(item.id, 1)}>+</button>
               </div>
             </div>
           ))}
+
+          <hr />
           <b>Total: ₹{total}</b>
+
+          <button
+            style={{
+              marginTop: 14,
+              background: "#25D366",
+              color: "#fff",
+              fontWeight: "bold",
+            }}
+            onClick={() => checkoutOnWhatsApp(cart, user)}
+          >
+            Checkout on WhatsApp
+          </button>
         </>
       )}
     </Modal>
   );
 }
 
-/* ================= MODALS ================= */
+/* ================= LOGIN ================= */
 
 function LoginModal({ close }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const login = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      close();
+    } catch {
+      setError("Invalid email or password.");
+    }
+  };
 
   return (
     <Modal title="Login" close={close}>
@@ -202,54 +270,66 @@ function LoginModal({ close }) {
         placeholder="Password"
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button onClick={() => signInWithEmailAndPassword(auth, email, password)}>
-        Login
-      </button>
-      <button onClick={() => close()}>Cancel</button>
+      {error && <Error text={error} />}
+      <button onClick={login}>Login</button>
     </Modal>
   );
 }
 
+/* ================= SIGNUP ================= */
+
 function SignupModal({ close }) {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const signup = async () => {
+    try {
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(res.user, { displayName: username });
+      await sendEmailVerification(res.user);
+      close();
+    } catch {
+      setError("Signup failed.");
+    }
+  };
 
   return (
     <Modal title="Sign Up" close={close}>
+      <input placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
       <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
       <input
         type="password"
         placeholder="Password"
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button
-        onClick={() =>
-          createUserWithEmailAndPassword(auth, email, password)
-        }
-      >
-        Create Account
-      </button>
+      {error && <Error text={error} />}
+      <button onClick={signup}>Create Account</button>
     </Modal>
   );
 }
+
+/* ================= PROFILE ================= */
 
 function ProfileModal({ close }) {
   const user = auth.currentUser;
   const [name, setName] = useState(user?.displayName || "");
 
-  const save = async () => {
+  const saveProfile = async () => {
     await updateProfile(user, { displayName: name });
-    close();
   };
 
   return (
-    <Modal title="Profile" close={close}>
+    <Modal title="Edit Profile" close={close}>
       <input value={name} onChange={(e) => setName(e.target.value)} />
-      <button onClick={save}>Save</button>
+      <button onClick={saveProfile}>Save</button>
       <button onClick={() => signOut(auth)}>Logout</button>
     </Modal>
   );
 }
+
+/* ================= UI ================= */
 
 function Modal({ title, children, close }) {
   return (
@@ -261,4 +341,8 @@ function Modal({ title, children, close }) {
       </div>
     </div>
   );
+}
+
+function Error({ text }) {
+  return <p style={{ color: "#d32f2f", fontSize: 14 }}>{text}</p>;
 }
