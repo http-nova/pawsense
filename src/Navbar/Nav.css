@@ -124,7 +124,7 @@ body {
 
 /* ===== HAMBURGER MENU ===== */
 .navbar-options {
-  display: none; /* 🔑 important */
+  display: flex; /* 🔑 important */
 }
 
 .navbar-options.open {
