@@ -19,8 +19,6 @@ const ADMIN_EMAIL = "pawsensemain@gmail.com";
 const NAV_HEIGHT = 90;
 const WHATSAPP_NUMBER = "9172200424";
 
-/* ================= NAV ================= */
-
 function Nav() {
   const [user, setUser] = useState(null);
   const [cart, setCart] = useState([]);
@@ -30,6 +28,7 @@ function Nav() {
   const [showSignup, setShowSignup] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showCart, setShowCart] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const cartUnsubRef = useRef(null);
 
@@ -39,11 +38,7 @@ function Nav() {
     const authUnsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
 
-      // cleanup old cart listener
-      if (cartUnsubRef.current) {
-        cartUnsubRef.current();
-        cartUnsubRef.current = null;
-      }
+      if (cartUnsubRef.current) cartUnsubRef.current();
 
       if (u) {
         const cartRef = doc(db, "cart", u.uid);
@@ -56,12 +51,7 @@ function Nav() {
 
           const items = snap.data().items || [];
           setCart(items);
-
-          const totalQty = items.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          );
-          setCartCount(totalQty);
+          setCartCount(items.reduce((s, i) => s + i.quantity, 0));
         });
       } else {
         setCart([]);
@@ -87,6 +77,7 @@ function Nav() {
       NAV_HEIGHT;
 
     window.scrollTo({ top: y, behavior: "smooth" });
+    setMenuOpen(false);
   };
 
   return (
@@ -96,14 +87,20 @@ function Nav() {
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
-        <div className="navbar-options">
+        {/* HAMBURGER */}
+        <div
+          className={`hamburger ${menuOpen ? "active" : ""}`}
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
           <ul className="navbar-links">
             {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
-              <li
-                key={id}
-                style={{ cursor: "pointer" }}
-                onClick={() => scrollTo(id)}
-              >
+              <li key={id} onClick={() => scrollTo(id)}>
                 {id === "aboutUs"
                   ? "About Us"
                   : id === "contactUs"
@@ -114,10 +111,7 @@ function Nav() {
 
             <li
               className="navbar-cart"
-              style={{ cursor: "pointer", position: "relative" }}
-              onClick={() =>
-                user ? setShowCart(true) : setShowLogin(true)
-              }
+              onClick={() => (user ? setShowCart(true) : setShowLogin(true))}
             >
               <img src={cartlogo} alt="Cart" />
               {cartCount > 0 && (
@@ -131,7 +125,6 @@ function Nav() {
               <>
                 <span
                   className="user-name"
-                  style={{ cursor: "pointer" }}
                   onClick={() => setShowProfile(true)}
                 >
                   Hi, {user.displayName || user.email}
@@ -164,181 +157,98 @@ function Nav() {
       {showLogin && <LoginModal close={() => setShowLogin(false)} />}
       {showSignup && <SignupModal close={() => setShowSignup(false)} />}
       {showProfile && <ProfileModal close={() => setShowProfile(false)} />}
-      {showCart && (
-        <CartModal
-          cart={cart}
-          user={user}
-          close={() => setShowCart(false)}
-        />
-      )}
+      {showCart && <CartModal cart={cart} user={user} close={() => setShowCart(false)} />}
     </>
   );
 }
 
 export default Nav;
 
-/* ================= WHATSAPP ================= */
+/* ================= CART ================= */
 
 const checkoutOnWhatsApp = (cart, user) => {
-  if (!cart.length) return;
-
-  const customer = user.displayName || user.email;
   let total = 0;
-
   const lines = cart.map((i, idx) => {
     const t = i.price * i.quantity;
     total += t;
     return `${idx + 1}. ${i.name} × ${i.quantity} = ₹${t}`;
   });
 
-  const msg = `
-🐾 PawSense Order
-Customer: ${customer}
-
-${lines.join("\n")}
-
-Total: ₹${total}
-`;
-
+  const msg = `🐾 PawSense Order\n\n${lines.join("\n")}\n\nTotal: ₹${total}`;
   window.open(
     `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
     "_blank"
   );
 };
 
-/* ================= CART MODAL ================= */
-
 function CartModal({ cart, user, close }) {
   const updateQty = async (id, delta) => {
     const updated = cart
-      .map((i) =>
-        i.id === id ? { ...i, quantity: i.quantity + delta } : i
-      )
+      .map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
       .filter((i) => i.quantity > 0);
 
-    await updateDoc(doc(db, "cart", user.uid), {
-      items: updated,
-    });
+    await updateDoc(doc(db, "cart", user.uid), { items: updated });
   };
 
-  const total = cart.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
+  const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
   return (
     <Modal title="Your Cart" close={close}>
-      {cart.length === 0 ? (
-        <p>Your cart is empty.</p>
-      ) : (
-        <>
-          {cart.map((item) => (
-            <div className="cart-item" key={item.id}>
-              <span>
-                {item.name} × {item.quantity}
-              </span>
-              <div>
-                <button onClick={() => updateQty(item.id, -1)}>-</button>
-                <button onClick={() => updateQty(item.id, 1)}>+</button>
-              </div>
-            </div>
-          ))}
-
-          <hr />
-          <b>Total: ₹{total}</b>
-
-          <button
-            style={{
-              marginTop: 14,
-              background: "#25D366",
-              color: "#fff",
-              fontWeight: "bold",
-            }}
-            onClick={() => checkoutOnWhatsApp(cart, user)}
-          >
-            Checkout on WhatsApp
-          </button>
-        </>
-      )}
+      {cart.map((i) => (
+        <div className="cart-item" key={i.id}>
+          <span>{i.name} × {i.quantity}</span>
+          <div>
+            <button onClick={() => updateQty(i.id, -1)}>-</button>
+            <button onClick={() => updateQty(i.id, 1)}>+</button>
+          </div>
+        </div>
+      ))}
+      <b>Total: ₹{total}</b>
+      <button
+        style={{ background: "#25D366", color: "#fff" }}
+        onClick={() => checkoutOnWhatsApp(cart, user)}
+      >
+        Checkout on WhatsApp
+      </button>
     </Modal>
   );
 }
 
-/* ================= LOGIN ================= */
+/* ================= MODALS ================= */
 
 function LoginModal({ close }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const login = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      close();
-    } catch {
-      setError("Invalid email or password.");
-    }
-  };
 
   return (
     <Modal title="Login" close={close}>
       <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
       <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-      {error && <Error text={error} />}
-      <button onClick={login}>Login</button>
+      <button onClick={() => signInWithEmailAndPassword(auth, email, password)}>Login</button>
     </Modal>
   );
 }
 
-/* ================= SIGNUP ================= */
-
 function SignupModal({ close }) {
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const signup = async () => {
-    try {
-      const res = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(res.user, { displayName: username });
-      await sendEmailVerification(res.user);
-      close();
-    } catch {
-      setError("Signup failed.");
-    }
-  };
 
   return (
     <Modal title="Sign Up" close={close}>
-      <input placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
       <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
       <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-      {error && <Error text={error} />}
-      <button onClick={signup}>Create Account</button>
+      <button onClick={() => createUserWithEmailAndPassword(auth, email, password)}>Create</button>
     </Modal>
   );
 }
-
-/* ================= PROFILE ================= */
 
 function ProfileModal({ close }) {
-  const user = auth.currentUser;
-  const [name, setName] = useState(user?.displayName || "");
-
-  const saveProfile = async () => {
-    await updateProfile(user, { displayName: name });
-  };
-
   return (
-    <Modal title="Edit Profile" close={close}>
-      <input value={name} onChange={(e) => setName(e.target.value)} />
-      <button onClick={saveProfile}>Save</button>
+    <Modal title="Profile" close={close}>
+      <p>Edit profile coming soon</p>
     </Modal>
   );
 }
-
-/* ================= UI ================= */
 
 function Modal({ title, children, close }) {
   return (
@@ -350,8 +260,4 @@ function Modal({ title, children, close }) {
       </div>
     </div>
   );
-}
-
-function Error({ text }) {
-  return <p style={{ color: "#d32f2f", fontSize: 14 }}>{text}</p>;
 }

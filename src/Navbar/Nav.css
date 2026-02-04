@@ -1,145 +1,151 @@
-/* ===== GLOBAL FIX ===== */
+/* ===== GLOBAL ===== */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
-html {
-  scroll-behavior: smooth;
-}
 body {
   overflow-x: hidden;
-} /* ===== NAVBAR ===== */
+}
+
+/* ===== NAVBAR ===== */
 .navbar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 90px;
-  background-color: #f4fff9;
+  background: #f4fff9;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 40px;
+  padding: 0 30px;
   z-index: 1000;
-  gap: 200px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-} /* ===== LOGO ===== */
-.navbar-logo {
-  height: 70%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+
+/* ===== LOGO ===== */
 .navbar-logo img {
-  height: 100%;
-  width: auto;
+  height: 55px;
 }
+
+/* ===== HAMBURGER ===== */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+}
+.hamburger span {
+  width: 26px;
+  height: 3px;
+  background: #000;
+  transition: 0.3s;
+}
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* ===== LINKS ===== */
 .navbar-options {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
   gap: 30px;
-} /* ===== LINKS ===== */
+}
 .navbar-links {
   display: flex;
-  align-items: center;
-  gap: 50px;
+  gap: 30px;
   list-style: none;
 }
-.navbar-links a {
-  text-decoration: none;
-  color: black;
-  font-weight: 500;
-  font-size: 18px;
-} /* ===== CART ===== */
+.navbar-links li {
+  cursor: pointer;
+  font-size: 17px;
+}
+
+/* ===== CART ===== */
 .navbar-cart img {
   height: 30px;
-  cursor: pointer;
-} /* ===== ACTIONS ===== */
+}
+.cart-badge {
+  position: absolute;
+  background: red;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+/* ===== ACTIONS ===== */
 .navbar-actions {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 .navbar-actions button {
-  padding: 12px 22px;
+  padding: 10px 18px;
+  border-radius: 18px;
   border: none;
-  background-color: #dee6a8;
-  border-radius: 20px;
-  font-weight: 700;
+  background: #dee6a8;
   cursor: pointer;
-  font-size: 16px;
 }
-.navbar-actions button:hover {
-  background-color: #cfdc7a;
-}
-.user-name {
-  font-weight: bold;
-  font-size: 18px;
-} /* ===== AUTH & CART MODALS ===== */
+
+/* ===== MODALS ===== */
 .auth-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
+  background: rgba(0,0,0,0.5);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   z-index: 2000;
 }
 .auth-modal {
   background: #fff;
-  padding: 30px;
-  width: 360px;
-  border-radius: 16px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  padding: 24px;
+  border-radius: 14px;
+  width: 320px;
 }
-.auth-modal h2 {
-  text-align: center;
-} /* Inputs */
-.auth-modal input {
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-} /* Buttons */
-.auth-modal button {
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-  background: #dee6a8;
-  font-weight: bold;
-  cursor: pointer;
-}
-.auth-modal button:hover {
-  background: #cfdc7a;
-} /* Close button */
 .close-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  border: none;
-  background: #000;
-  color: #fff;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
-} /* Cart items */
-.cart-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
+  top: 10px;
+  right: 10px;
 }
 
-.cart-badge {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: #ff5252;
-  color: #fff;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 50%;
-  font-weight: bold;
+/* ===== MOBILE ===== */
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .navbar-options {
+    position: absolute;
+    top: 90px;
+    left: 0;
+    width: 100%;
+    background: #f4fff9;
+    flex-direction: column;
+    align-items: center;
+    transform: translateY(-120%);
+    transition: 0.3s;
+    padding: 20px 0;
+  }
+
+  .navbar-options.open {
+    transform: translateY(0);
+  }
+
+  .navbar-links {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .navbar-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
 }
