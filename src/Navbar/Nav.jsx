@@ -35,7 +35,7 @@ function Nav() {
   /* ================= AUTH + CART ================= */
 
   useEffect(() => {
-    const authUnsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
 
       if (cartUnsubRef.current) cartUnsubRef.current();
@@ -56,7 +56,7 @@ function Nav() {
     });
 
     return () => {
-      authUnsub();
+      unsub();
       if (cartUnsubRef.current) cartUnsubRef.current();
     };
   }, []);
@@ -84,16 +84,37 @@ function Nav() {
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
-        {/* RIGHT ICONS (CART + HAMBURGER) */}
+        {/* RIGHT SIDE */}
         <div className="nav-right">
+          {/* USER */}
+          {user ? (
+            <span
+              className="nav-username"
+              onClick={() => setShowProfile(true)}
+            >
+              Hi, {user.displayName || "User"}
+            </span>
+          ) : (
+            <button
+              className="nav-login-btn"
+              onClick={() => setShowLogin(true)}
+            >
+              Login
+            </button>
+          )}
+
+          {/* CART */}
           <div
             className="navbar-cart"
             onClick={() => (user ? setShowCart(true) : setShowLogin(true))}
           >
             <img src={cartlogo} alt="Cart" />
-            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+            {cartCount > 0 && (
+              <span className="cart-badge">{cartCount}</span>
+            )}
           </div>
 
+          {/* HAMBURGER */}
           <div
             className={`hamburger ${menuOpen ? "active" : ""}`}
             onClick={() => setMenuOpen(!menuOpen)}
@@ -104,7 +125,7 @@ function Nav() {
           </div>
         </div>
 
-        {/* MENU */}
+        {/* MENU (LINKS ONLY) */}
         <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
           <ul className="navbar-links">
             {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
@@ -117,36 +138,6 @@ function Nav() {
               </li>
             ))}
           </ul>
-
-          {/* ACTIONS */}
-          <div className="navbar-actions">
-            {user ? (
-              <>
-                <span className="user-name" onClick={() => setShowProfile(true)}>
-                  Hi, {user.displayName || user.email}
-                </span>
-
-                {!user.emailVerified && (
-                  <button onClick={() => sendEmailVerification(user)}>
-                    Verify Email
-                  </button>
-                )}
-
-                {user.email === ADMIN_EMAIL && (
-                  <button onClick={() => (window.location.hash = "#/admin")}>
-                    Admin
-                  </button>
-                )}
-
-                <button onClick={() => signOut(auth)}>Logout</button>
-              </>
-            ) : (
-              <div className="auth-inline">
-                <button onClick={() => setShowSignup(true)}>Sign Up</button>
-                <button onClick={() => setShowLogin(true)}>Login</button>
-              </div>
-            )}
-          </div>
         </div>
       </nav>
 
@@ -161,3 +152,113 @@ function Nav() {
 }
 
 export default Nav;
+
+/* ================= CART ================= */
+
+function CartModal({ cart, user, close }) {
+  const updateQty = async (id, delta) => {
+    const updated = cart
+      .map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
+      .filter((i) => i.quantity > 0);
+
+    await updateDoc(doc(db, "cart", user.uid), { items: updated });
+  };
+
+  const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+
+  return (
+    <Modal title="Your Cart" close={close}>
+      {cart.length === 0 ? (
+        <p>Your cart is empty.</p>
+      ) : (
+        <>
+          {cart.map((i) => (
+            <div className="cart-item" key={i.id}>
+              <span>{i.name} × {i.quantity}</span>
+              <div>
+                <button onClick={() => updateQty(i.id, -1)}>-</button>
+                <button onClick={() => updateQty(i.id, 1)}>+</button>
+              </div>
+            </div>
+          ))}
+          <b>Total: ₹{total}</b>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+/* ================= MODALS ================= */
+
+function LoginModal({ close }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  return (
+    <Modal title="Login" close={close}>
+      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+      <input
+        type="password"
+        placeholder="Password"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <button onClick={() => signInWithEmailAndPassword(auth, email, password)}>
+        Login
+      </button>
+      <button onClick={() => close()}>Cancel</button>
+    </Modal>
+  );
+}
+
+function SignupModal({ close }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  return (
+    <Modal title="Sign Up" close={close}>
+      <input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+      <input
+        type="password"
+        placeholder="Password"
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <button
+        onClick={() =>
+          createUserWithEmailAndPassword(auth, email, password)
+        }
+      >
+        Create Account
+      </button>
+    </Modal>
+  );
+}
+
+function ProfileModal({ close }) {
+  const user = auth.currentUser;
+  const [name, setName] = useState(user?.displayName || "");
+
+  const save = async () => {
+    await updateProfile(user, { displayName: name });
+    close();
+  };
+
+  return (
+    <Modal title="Profile" close={close}>
+      <input value={name} onChange={(e) => setName(e.target.value)} />
+      <button onClick={save}>Save</button>
+      <button onClick={() => signOut(auth)}>Logout</button>
+    </Modal>
+  );
+}
+
+function Modal({ title, children, close }) {
+  return (
+    <div className="auth-overlay">
+      <div className="auth-modal">
+        <button className="close-btn" onClick={close}>✕</button>
+        <h2>{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+}
