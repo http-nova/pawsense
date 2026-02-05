@@ -94,6 +94,8 @@ function Nav() {
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
+        <div>
+          
                   {/* CART */}
           <div
             className="navbar-cart"
@@ -152,6 +154,9 @@ function Nav() {
 
 
         </div>
+          
+        </div>
+
 
 
       </nav>
