@@ -94,6 +94,19 @@ function Nav() {
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
+                  {/* CART */}
+          <div
+            className="navbar-cart"
+            onClick={() =>
+              user ? setShowCart(true) : setShowLogin(true)
+            }
+          >
+            <img src={cartlogo} alt="Cart" />
+            {cartCount > 0 && (
+              <span className="cart-badge">{cartCount}</span>
+            )}
+          </div>
+
                         {/* HAMBURGER MENU (LINKS ONLY) */}
         <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
           <ul className="navbar-links">
@@ -135,18 +148,7 @@ function Nav() {
             </div>
           )}
 
-          {/* CART */}
-          <div
-            className="navbar-cart"
-            onClick={() =>
-              user ? setShowCart(true) : setShowLogin(true)
-            }
-          >
-            <img src={cartlogo} alt="Cart" />
-            {cartCount > 0 && (
-              <span className="cart-badge">{cartCount}</span>
-            )}
-          </div>
+
 
 
         </div>
