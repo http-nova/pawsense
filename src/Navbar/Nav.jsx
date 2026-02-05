@@ -89,9 +89,34 @@ function Nav() {
     <>
       <nav className="navbar">
         {/* LOGO */}
+
         <div className="navbar-logo">
           <img src={imglogo} alt="PawSense Logo" />
         </div>
+
+                        {/* HAMBURGER MENU (LINKS ONLY) */}
+        <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
+          <ul className="navbar-links">
+            {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
+              <li key={id} onClick={() => scrollTo(id)}>
+                {id === "aboutUs"
+                  ? "About Us"
+                  : id === "contactUs"
+                  ? "Contact Us"
+                  : id.charAt(0).toUpperCase() + id.slice(1)}
+              </li>
+            ))}
+          </ul>
+        </div>
+                  {/* HAMBURGER */}
+          <div
+            className={`hamburger ${menuOpen ? "active" : ""}`}
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
 
         {/* RIGHT SIDE (USER + CART + HAMBURGER) */}
         <div className="nav-right">
@@ -123,31 +148,10 @@ function Nav() {
             )}
           </div>
 
-          {/* HAMBURGER */}
-          <div
-            className={`hamburger ${menuOpen ? "active" : ""}`}
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
+
         </div>
 
-        {/* HAMBURGER MENU (LINKS ONLY) */}
-        <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
-          <ul className="navbar-links">
-            {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
-              <li key={id} onClick={() => scrollTo(id)}>
-                {id === "aboutUs"
-                  ? "About Us"
-                  : id === "contactUs"
-                  ? "Contact Us"
-                  : id.charAt(0).toUpperCase() + id.slice(1)}
-              </li>
-            ))}
-          </ul>
-        </div>
+
       </nav>
 
       {/* MODALS */}
