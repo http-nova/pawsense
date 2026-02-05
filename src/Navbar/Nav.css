@@ -39,6 +39,11 @@ body {
   width: auto;
 }
 
+.navbar-side{
+  display: flex;
+  gap: 50px;
+}
+
 /* ===== RIGHT SIDE (USER + CART + HAMBURGER) ===== */
 .nav-right {
   display: flex;

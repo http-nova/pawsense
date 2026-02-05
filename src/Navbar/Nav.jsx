@@ -94,7 +94,7 @@ function Nav() {
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
-        <div>
+        <div className="navbar-side">
           
                   {/* CART */}
           <div
