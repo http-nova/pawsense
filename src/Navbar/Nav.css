@@ -221,6 +221,11 @@ body {
     display: flex;
   }
 
+  .navbar-side {
+    gap: 18px;          /* ⬅️ was 50px */
+    align-items: center;
+  }
+
   .navbar {
     padding: 0 20px;
   }
@@ -246,6 +251,6 @@ body {
 
   .navbar-links {
     flex-direction: column;
-    gap: 20px;
+    gap: 10px;
   }
 }

@@ -7,6 +7,7 @@ import Groom from "./Groom/Groom.jsx";
 import Admin from "./Admin/Admin.jsx";
 import AboutUs from "./AboutUs/AboutUs.jsx";
 import ContactUs from "./ContactUs/ContactUs.jsx";
+import VetMap from "./VetFinder/VetMap.jsx";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
               <Home />
               <Toys />
               <Groom />
+              <VetMap />
               <AboutUs />
               <ContactUs />
             </>
