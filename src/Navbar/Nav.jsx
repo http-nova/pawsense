@@ -88,15 +88,12 @@ function Nav() {
   return (
     <>
       <nav className="navbar">
-        {/* LOGO */}
-
         <div className="navbar-logo">
           <img src={imglogo} alt="PawSense Logo" />
         </div>
 
         <div className="navbar-side">
-          
-                  {/* CART */}
+          {/* CART */}
           <div
             className="navbar-cart"
             onClick={() =>
@@ -109,21 +106,22 @@ function Nav() {
             )}
           </div>
 
-                        {/* HAMBURGER MENU (LINKS ONLY) */}
-        <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
-          <ul className="navbar-links">
-            {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
-              <li key={id} onClick={() => scrollTo(id)}>
-                {id === "aboutUs"
-                  ? "About Us"
-                  : id === "contactUs"
-                  ? "Contact Us"
-                  : id.charAt(0).toUpperCase() + id.slice(1)}
-              </li>
-            ))}
-          </ul>
-        </div>
-                  {/* HAMBURGER */}
+          {/* MENU */}
+          <div className={`navbar-options ${menuOpen ? "open" : ""}`}>
+            <ul className="navbar-links">
+              {["home", "toys", "guide", "aboutUs", "contactUs"].map((id) => (
+                <li key={id} onClick={() => scrollTo(id)}>
+                  {id === "aboutUs"
+                    ? "About Us"
+                    : id === "contactUs"
+                    ? "Contact Us"
+                    : id.charAt(0).toUpperCase() + id.slice(1)}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* HAMBURGER */}
           <div
             className={`hamburger ${menuOpen ? "active" : ""}`}
             onClick={() => setMenuOpen(!menuOpen)}
@@ -133,32 +131,23 @@ function Nav() {
             <span></span>
           </div>
 
-        {/* RIGHT SIDE (USER + CART + HAMBURGER) */}
-        <div className="nav-right">
-          {/* USER / LOGIN */}
-          {user ? (
-            <span
-              className="nav-username"
-              onClick={() => setShowProfile(true)}
-            >
-              Hi, {user.displayName || user.email}
-            </span>
-          ) : (
-            <div className="auth-inline">
-              <button onClick={() => setShowSignup(true)}>Sign Up</button>
-              <button onClick={() => setShowLogin(true)}>Login</button>
-            </div>
-          )}
-
-
-
-
+          {/* USER */}
+          <div className="nav-right">
+            {user ? (
+              <span
+                className="nav-username"
+                onClick={() => setShowProfile(true)}
+              >
+                Hi, {user.displayName || user.email}
+              </span>
+            ) : (
+              <div className="auth-inline">
+                <button onClick={() => setShowSignup(true)}>Sign Up</button>
+                <button onClick={() => setShowLogin(true)}>Login</button>
+              </div>
+            )}
+          </div>
         </div>
-          
-        </div>
-
-
-
       </nav>
 
       {/* MODALS */}
@@ -174,10 +163,10 @@ function Nav() {
 
 export default Nav;
 
-/* ================= WHATSAPP ================= */
+/* ================= WHATSAPP CHECKOUT ================= */
 
-const checkoutOnWhatsApp = (cart, user) => {
-  if (!cart.length) return;
+const checkoutOnWhatsApp = async (cart, user) => {
+  if (!cart.length || !user) return;
 
   const customer = user.displayName || user.email;
   let total = 0;
@@ -201,6 +190,11 @@ Total: ₹${total}
     `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
     "_blank"
   );
+
+  // ✅ EMPTY CART AFTER CHECKOUT
+  await updateDoc(doc(db, "cart", user.uid), {
+    items: [],
+  });
 };
 
 /* ================= CART MODAL ================= */
@@ -229,7 +223,9 @@ function CartModal({ cart, user, close }) {
         <>
           {cart.map((item) => (
             <div className="cart-item" key={item.id}>
-              <span>{item.name} × {item.quantity}</span>
+              <span>
+                {item.name} × {item.quantity}
+              </span>
               <div>
                 <button onClick={() => updateQty(item.id, -1)}>-</button>
                 <button onClick={() => updateQty(item.id, 1)}>+</button>
