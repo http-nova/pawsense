@@ -221,6 +221,11 @@ body {
     display: flex;
   }
 
+  .navbar-logo{
+    height: 60%;
+  }
+
+
   .navbar-side {
     gap: 18px;          /* ⬅️ was 50px */
     align-items: center;
