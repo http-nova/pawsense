@@ -26,9 +26,9 @@ function ContactUs() {
         <p>+91 1234356470</p>
 
         <div className="socials">
-            <a href="https://www.facebook.com/#" target="_blank" rel="noopener noreferrer"><img src={facebook} alt="Facebook" /></a>
-            <a href="https://www.instagram.com/#" target="_blank" rel="noopener noreferrer"><img src={instagram} alt="instagram" /></a>
-            <a href="https://www.twitter.com/#" target="_blank" rel="noopener noreferrer"><img src={twitter} alt="twitter"/></a>
+            <a href="#" target="_blank" rel="noopener noreferrer"><img src={facebook} alt="Facebook" /></a>
+            <a href="#" target="_blank" rel="noopener noreferrer"><img src={instagram} alt="instagram" /></a>
+            <a href="#" target="_blank" rel="noopener noreferrer"><img src={twitter} alt="twitter"/></a>
         </div>
       </div>
 
