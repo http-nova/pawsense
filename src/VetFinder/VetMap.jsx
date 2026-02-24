@@ -126,11 +126,6 @@ function VetMap() {
             <div className="vet-card" key={vet.id}>
               <div className="vet-info">
                 <h4>{vet.tags?.name || "Veterinary Clinic"}</h4>
-                <p>
-                  {vet.tags?.["addr:street"] ||
-                    vet.tags?.["addr:city"] ||
-                    "Address not available"}
-                </p>
               </div>
 
               <button
